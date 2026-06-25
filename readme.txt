@@ -4,7 +4,7 @@ Tags: ai, api, remote management, automation, developer tools
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.2.0
+Stable tag: 3.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -131,6 +131,13 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 
 == Changelog ==
 
+= 3.4.0 =
+* Security: Restricted write/modify endpoints to wp-content/ directory to prevent WordPress core modifications.
+* Security: Added recursive protection to block AI access to hidden directories (.git) and critical credentials (.env).
+* Bugfix: Made transient-based rate limiting fully object-cache-safe for Redis/Memcached environments.
+* Bugfix: Normalized backslashes to forward slashes for Windows search path exclusions.
+* Compliance: Split into strictly read-only Free version and secure write-enabled Pro version.
+
 = 3.2.0 =
 * Added AI Agent Skill Pack with one-click agent prompt
 * Added `/skill` REST endpoint for dynamic agent skill delivery
@@ -176,6 +183,9 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Initial internal release
 
 == Upgrade Notice ==
+
+= 3.4.0 =
+Security hardening and bugfix release. Restricts write operations to wp-content/, protects hidden directories, and fixes object-cache transient rate limit issues. Recommends immediate upgrade.
 
 = 3.2.0 =
 Security hardening release. Fixes path traversal edge cases, IP spoofing, and XSS. Adds AI Agent Skill Pack for one-click agent integration.
