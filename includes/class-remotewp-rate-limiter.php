@@ -33,29 +33,40 @@ class RemoteWP_Rate_Limiter {
 			return true; // Rate limiting disabled
 		}
 
-		$key   = 'remotewp_rate_' . md5( $ip );
-		$count = (int) get_transient( $key );
+		$key  = 'remotewp_rate_' . md5( $ip );
+		$data = get_transient( $key );
 
-		if ( $count >= $limit ) {
-			return new WP_Error(
-				'rate_limited',
-				sprintf(
-					/* translators: %d: rate limit per minute */
-					__( 'Rate limit exceeded. Maximum %d requests per minute.', 'remotewp' ),
-					$limit
-				),
-				array( 'status' => 429 )
+		if ( ! is_array( $data ) ) {
+			// Initialize new window
+			$data = array(
+				'count'      => 1,
+				'expires_at' => time() + 60,
 			);
-		}
-
-		// Increment counter (60-second window)
-		if ( $count === 0 ) {
-			set_transient( $key, 1, 60 );
+			set_transient( $key, $data, 60 );
 		} else {
-			// Update without resetting expiry
-			$timeout_key = '_transient_timeout_' . $key;
-			$timeout     = get_option( $timeout_key );
-			set_transient( $key, $count + 1, max( 1, $timeout - time() ) );
+			$remaining = $data['expires_at'] - time();
+			if ( $remaining <= 0 ) {
+				// Window expired
+				$data = array(
+					'count'      => 1,
+					'expires_at' => time() + 60,
+				);
+				set_transient( $key, $data, 60 );
+			} else {
+				if ( $data['count'] >= $limit ) {
+					return new WP_Error(
+						'rate_limited',
+						sprintf(
+							/* translators: %d: rate limit per minute */
+							__( 'Rate limit exceeded. Maximum %d requests per minute.', 'remotewp' ),
+							$limit
+						),
+						array( 'status' => 429 )
+					);
+				}
+				$data['count']++;
+				set_transient( $key, $data, $remaining );
+			}
 		}
 
 		return true;

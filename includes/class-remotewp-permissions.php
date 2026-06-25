@@ -211,6 +211,21 @@ class RemoteWP_Permissions {
 	 * @return bool
 	 */
 	public function is_protected_file( $path ) {
+		// Normalize path separators
+		$normalized_path = str_replace( '\\', '/', $path );
+		$real_base       = realpath( ABSPATH );
+
+		// Extract relative path from ABSPATH
+		$relative_path = ltrim( str_replace( $real_base, '', $normalized_path ), '/' );
+		$segments      = explode( '/', $relative_path );
+
+		// Security: recursively block access to any hidden directories/files (e.g. .git/, .github/, .env, .htaccess)
+		foreach ( $segments as $segment ) {
+			if ( 0 === strpos( $segment, '.' ) && '.' !== $segment && '..' !== $segment ) {
+				return true;
+			}
+		}
+
 		$basename = strtolower( basename( $path ) );
 		return in_array( $basename, $this->protected_files, true );
 	}
