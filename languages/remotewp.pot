@@ -1,0 +1,423 @@
+# Copyright (C) 2024-2026 X-HOUSE SRL
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: RemoteWP 3.0.0\n"
+"Report-Msgid-Bugs-To: https://remotewp.dev/support\n"
+"POT-Creation-Date: 2026-05-29 10:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: X-HOUSE SRL <xander@xhouse.ro>\n"
+"Language-Team: X-HOUSE SRL <xander@xhouse.ro>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: remotewp.php
+msgid "Settings"
+msgstr ""
+
+#: includes/class-remotewp-rate-limiter.php
+#, php-format
+msgid "Rate limit exceeded. Maximum %d requests per minute."
+msgstr ""
+
+#: includes/class-remotewp-rate-limiter.php
+#, php-format
+msgid "Too many failed attempts. Locked out for %d minutes."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+#, php-format
+msgid "Operation \"%1$s\" is not allowed under the \"%2$s\" permission profile."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "This file is protected and cannot be accessed via the API."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Invalid path or parent directory does not exist."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Path does not exist."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Access denied. Path is outside the allowed directory."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Access denied. This path is not in the allowed directories list."
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Read Only — List and read files, view site info"
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Read & Write — All read operations plus write and create"
+msgstr ""
+
+#: includes/class-remotewp-permissions.php
+msgid "Full Access — All operations including delete, rename, and plugin management"
+msgstr ""
+
+#: includes/class-remotewp-auth.php
+msgid "RemoteWP API requires HTTPS for security."
+msgstr ""
+
+#: includes/class-remotewp-auth.php
+msgid "Missing authentication token. Send it via the X-RemoteWP-Token header."
+msgstr ""
+
+#: includes/class-remotewp-auth.php
+msgid "Invalid authentication token."
+msgstr ""
+
+#: includes/class-remotewp-auth.php
+msgid "Your IP address is not in the allowed list."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Path is not a directory."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Path parameter is required."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Path is not a file."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "File exceeds the 5MB read limit."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Could not write to file."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Path not found."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Could not delete. Directory may not be empty."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Both \"path\" and \"new_name\" are required."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Cannot rename to a protected file type."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Could not rename."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Path already exists."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Could not create directory."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Both \"path\" and \"backup_file\" are required."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Backup file not found."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Could not restore file."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Query parameter is required."
+msgstr ""
+
+#: includes/class-remotewp-fs-api.php
+msgid "Search path must be a directory."
+msgstr ""
+
+#: includes/class-remotewp-wp-api.php
+msgid "Both \"plugin\" (file path) and \"action\" (activate/deactivate) are required."
+msgstr ""
+
+#: includes/class-remotewp-wp-api.php
+msgid "Action must be \"activate\" or \"deactivate\"."
+msgstr ""
+
+#: includes/class-remotewp-wp-api.php
+msgid "Plugin not found."
+msgstr ""
+
+#: includes/class-remotewp-wp-api.php
+msgid "Cannot deactivate RemoteWP through its own API."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "RemoteWP"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "The AI-Ready WordPress Bridge"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Dashboard"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Activity Log"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "API Token"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Use this token in the X-RemoteWP-Token header to authenticate API requests."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Copy"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Regenerate Token"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Connection Info"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "API Base URL"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Auth Header"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Permission Level"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Rate Limit"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "req/min"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Quick Test"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Test the API connection from your terminal:"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Available Endpoints"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Server status"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "List directory"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Read file"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Write file"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Delete file"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Rename file"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Create directory"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Restore backup"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Search files"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Site information"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Plugin list"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Toggle plugin"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Read options"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Clear caches"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Recent Activity"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "View all →"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "No activity yet. API calls will appear here."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Time"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Action"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Path"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "IP"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Status"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Timestamp"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Details"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "All"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "No log entries found."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Permissions"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Path Restrictions"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "One path per line, relative to WordPress root. Leave empty to allow access to all directories within ABSPATH."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Security"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Rate Limit (requests per minute)"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Set to 0 to disable rate limiting."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Lockout after failed attempts"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Lockout duration (minutes)"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "IP Whitelist"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "One IP per line. Supports CIDR notation (e.g., 192.168.1.0/24). Leave empty to allow all IPs."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Save Settings"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Documentation"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+#, php-format
+msgid "RemoteWP by %s — The AI-Ready WordPress Bridge"
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "Settings saved successfully."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "API token regenerated. Update the token in all connected agents."
+msgstr ""
+
+#: includes/class-remotewp-admin.php
+msgid "You do not have permission to perform this action."
+msgstr ""
+
+#: admin/js/admin.js
+msgid "Copied!"
+msgstr ""
+
+#: admin/js/admin.js
+msgid "Copy failed"
+msgstr ""
+
+#: admin/js/admin.js
+msgid "Connection successful!"
+msgstr ""
+
+#: admin/js/admin.js
+msgid "Connection failed"
+msgstr ""
+
+#: admin/js/admin.js
+msgid "Are you sure? Regenerating the token will disconnect all connected agents until the new token is configured."
+msgstr ""
