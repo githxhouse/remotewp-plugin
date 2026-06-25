@@ -1,0 +1,13 @@
+# WordPress Plugin Ignored Files
+.DS_Store
+.thumbs
+Thumbs.db
+.idea/
+.vscode/
+*.log
+*.zip
+*.bak
+node_modules/
+vendor/
+.env
+.env.*
