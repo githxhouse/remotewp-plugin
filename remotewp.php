@@ -50,7 +50,8 @@ function remotewp_load_classes() {
 	require_once $includes . 'class-remotewp-auth.php';
 	require_once $includes . 'class-remotewp-fs-api.php';
 	require_once $includes . 'class-remotewp-admin.php';
-	require_once $includes . 'class-remotewp-updater.php';
+
+	// Auto-updater is only included in Pro builds (not in WP.org free version)
 
 	// Pro classes (only if pro/ folder exists)
 	if ( REMOTEWP_IS_PRO ) {
@@ -77,8 +78,7 @@ function remotewp_init() {
 	new RemoteWP_FS_API( $auth, $permissions, $logger, $license );
 	new RemoteWP_Admin( $auth, $permissions, $logger, $license );
 
-	// Auto-updater (Pro builds with active license)
-	new RemoteWP_Updater();
+	// Auto-updater: only active in Pro builds (file not included in free/WP.org version)
 
 	// Pro endpoints (only if pro/ folder exists)
 	if ( REMOTEWP_IS_PRO ) {
