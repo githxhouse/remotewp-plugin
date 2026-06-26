@@ -25,6 +25,14 @@ class RemoteWP_License {
 	/**
 	 * Remote license API base URL.
 	 *
+	 * External service: remotewp.dev (operated by X-HOUSE SRL, Arad, Romania)
+	 * Endpoints used:
+	 *   - /activate   — sends license_key, site domain, plugin_version (on license activation)
+	 *   - /deactivate — sends license_key, site domain (on license deactivation)
+	 *   - /verify     — sends license_key, site domain, plugin_version (daily WP-Cron check)
+	 * Only contacts the server if the user has entered a license key.
+	 * Privacy policy: https://remotewp.dev/privacy-policy.html
+	 *
 	 * @var string
 	 */
 	private $api_url = 'https://remotewp.dev/wp-json/remotewp-license/v1';

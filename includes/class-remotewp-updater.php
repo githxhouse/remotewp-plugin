@@ -27,6 +27,11 @@ class RemoteWP_Updater {
 	/**
 	 * License server update-check endpoint.
 	 *
+	 * External service: remotewp.dev (operated by X-HOUSE SRL, Arad, Romania)
+	 * Data sent: license_key, site domain, current plugin version, plugin slug.
+	 * When: Only for Pro users with an active license key, at most once per 12 hours.
+	 * Privacy policy: https://remotewp.dev/privacy-policy.html
+	 *
 	 * @var string
 	 */
 	private $api_url = 'https://remotewp.dev/wp-json/remotewp-license/v1/update-check';

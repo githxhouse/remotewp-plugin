@@ -1,29 +1,29 @@
 === RemoteWP ===
 Contributors: xhouse
-Tags: ai, api, remote management, automation, developer tools
+Tags: ai, api, rest-api, remote management, developer tools
 Requires at least: 5.8
-Tested up to: 7.0
+Tested up to: 6.7
 Requires PHP: 7.4
 Stable tag: 3.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
+Let AI agents read and inspect your WordPress site remotely through a secure REST API — no SSH or FTP needed.
 
 == Description ==
 
-**RemoteWP** turns your WordPress site into a secure, API-controllable endpoint that AI agents can manage remotely. Whether you use Claude, ChatGPT, Cursor, Windsurf, or any custom automation — RemoteWP gives them direct access to your site's filesystem and WordPress operations through a clean REST API.
+**RemoteWP** turns your WordPress site into a secure, API-readable endpoint that AI agents can inspect remotely. Whether you use Claude, ChatGPT, Cursor, Windsurf, or any custom automation tool — RemoteWP gives them read-only access to your site's filesystem and WordPress information through a clean REST API.
 
 = Why RemoteWP? =
 
-Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents and automation tools can't use these easily. RemoteWP solves this by providing:
+Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents and automation tools can't use these easily. RemoteWP solves this by providing a secure read-only REST API bridge:
 
 * **Secure REST API** — Token-based authentication over HTTPS
-* **Filesystem Operations** — Read, write, delete, rename, search files
-* **WordPress Operations** — Site info, plugin management, cache clearing
-* **Auto-Backup** — Every destructive operation creates an automatic backup
+* **Filesystem Reading** — List directories and read files (read-only)
+* **WordPress Info** — Site info, plugin list, theme details
 * **Audit Logging** — Full activity log with IP tracking
-* **Granular Permissions** — Read-only, read-write, or full access profiles
+* **Granular Permissions** — Read-only access profile enforced on free version
+* **Rate Limiting** — Configurable requests per minute with brute-force lockout
 
 = Key Features =
 
@@ -35,45 +35,32 @@ Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents 
 * Rate limiting (configurable requests per minute)
 * Brute force lockout (auto-blocks after failed attempts)
 * Protected files (wp-config.php, .env, .htaccess cannot be accessed)
+* Hidden directories blocked (.git, .github, etc.)
 * Path restrictions (limit access to specific directories)
 * Directory traversal prevention
 
-**Filesystem API**
+**Read-Only Filesystem API (Free)**
 
-* `GET /list` — List directory contents with metadata
-* `GET /read` — Read file content (up to 5MB)
-* `POST /write` — Create or update files (with auto-backup)
-* `POST /delete` — Delete files or empty directories (with auto-backup)
-* `POST /rename` — Rename files or directories (with auto-backup)
-* `POST /mkdir` — Create new directories
-* `POST /restore` — Restore from automatic backup
-* `GET /search` — Search file contents (grep-like)
-* `GET /status` — Plugin and server status
-
-**WordPress Operations API**
-
-* `GET /wp/info` — Comprehensive site information
-* `GET /wp/plugins` — Full plugin list with update status
-* `POST /wp/plugin/toggle` — Activate or deactivate plugins
-* `GET /wp/options` — Read whitelisted WordPress options
-* `POST /wp/cache-clear` — Clear all caches (supports WP Super Cache, W3TC, WP Rocket, LiteSpeed)
+* `GET /remotewp/v1/list` — List directory contents with metadata
+* `GET /remotewp/v1/read` — Read file content (up to 5MB, read-only)
+* `GET /remotewp/v1/status` — Plugin and server status
+* `GET /remotewp/v1/skill` — AI agent skill pack (read-only)
+* `GET /remotewp/v1/wp/info` — Basic site information
 
 **Modern Admin Dashboard**
 
 * Clean, modern admin interface
 * Token management with copy-to-clipboard
 * Activity log viewer with filtering
-* Permission profile selector
+* Permission profile display
 * IP whitelist manager
 * Rate limit configuration
 
 = Use Cases =
 
-1. **AI-Powered Site Management** — Let Claude, GPT, or Cursor manage theme files, fix bugs, and optimize code
-2. **Automated Deployments** — Push code changes via API from CI/CD pipelines
-3. **Remote Auditing** — Scan files for malware, check plugin versions, audit configurations
-4. **Multi-Site Management** — Manage multiple WordPress sites from a central system
-5. **Backup Automation** — Automated file backup and restore workflows
+1. **AI-Powered Site Auditing** — Let Claude, GPT, or Cursor read theme files, audit plugin versions, and inspect configurations without write access
+2. **Remote Monitoring** — Check site status, plugin versions, and file structure via API
+3. **Multi-Site Inspection** — Inspect multiple WordPress sites from a central system
 
 = Quick Start =
 
@@ -90,53 +77,60 @@ Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents 
 2. Activate the plugin through the 'Plugins' menu
 3. Navigate to **RemoteWP** in the admin sidebar
 4. Copy the auto-generated API token
-5. Configure permissions, rate limits, and IP whitelist as needed
+5. Configure rate limits and IP whitelist as needed
 
 == Frequently Asked Questions ==
 
 = Is RemoteWP secure? =
 
-Yes. RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate limiting, IP whitelisting, brute force protection, and sandboxes all operations within your WordPress directory. Sensitive files like wp-config.php are always protected.
+Yes. RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate limiting, IP whitelisting, brute force protection, and sandboxes all operations within your WordPress directory. Sensitive files like wp-config.php, .env, and .htaccess are always blocked.
 
-= Can I limit what the API can do? =
+= Can the free version modify files? =
 
-Yes. RemoteWP offers three permission profiles:
-- **Read Only** — Only list and read operations
-- **Read & Write** — Read plus write and create
-- **Full Access** — All operations including delete and plugin management
+No. The free version is strictly read-only. It can list directories and read file contents, but cannot write, delete, rename, or modify any files. Write operations require a Pro license and are restricted to the wp-content/ directory only.
 
-You can also restrict access to specific directories using path restrictions.
+= What files are protected? =
+
+The following files can never be accessed via the API, regardless of permission level:
+wp-config.php, .env (and all .env.* variants), .htaccess, .htpasswd, .user.ini, php.ini, web.config, and all hidden directories (starting with a dot, such as .git).
 
 = Does it work with my caching plugin? =
 
-The cache-clear endpoint supports WP Super Cache, W3 Total Cache, WP Rocket, LiteSpeed Cache, and WordPress's built-in object cache.
+The plugin itself does not clear caches in the free version. Cache management is a Pro feature.
 
-= What happens if something goes wrong? =
+= What external services does this plugin use? =
 
-Every write, delete, and rename operation automatically creates a backup of the affected file. You can restore any file through the API or manually from the backup directory.
+See the "External Services" section below for full disclosure.
 
-= Can I use it with multiple AI tools? =
+== External Services ==
 
-Yes! The API is tool-agnostic. Any HTTP client, AI agent, or automation tool that can send REST requests with headers can use RemoteWP.
+This plugin connects to the following external service operated by the plugin author:
 
-= Where are backups stored? =
+**remotewp.dev** (operated by X-HOUSE SRL, Arad, Romania)
 
-Backups are stored in a randomized directory inside `wp-content/uploads/`. The directory is protected from web access via .htaccess, index.php, and a non-guessable folder name for compatibility with Nginx and LiteSpeed.
+1. **License validation** — When a Pro license key is entered in the settings, the plugin sends the license key and site domain to `https://remotewp.dev/wp-json/remotewp-license/v1/validate-key` to verify the license status. This only occurs for Pro users who have entered a license key.
+
+2. **Update checks** — For Pro users with an active license, the plugin checks for available updates by contacting `https://remotewp.dev/wp-json/remotewp-license/v1/update-check`. The request includes the license key, site domain, current plugin version, and plugin slug. This check is cached for 12 hours to minimize requests.
+
+No data is sent to external services for free users who have not entered a license key.
+
+Privacy policy: https://remotewp.dev/privacy-policy.html
+Terms of service: https://remotewp.dev/terms-of-service.html
 
 == Screenshots ==
 
 1. Dashboard — Token management and connection info
 2. Activity Log — Filterable audit log viewer
-3. Settings — Permissions, rate limiting, and IP whitelist
+3. Settings — Rate limiting and IP whitelist
 
 == Changelog ==
 
 = 3.4.0 =
 * Security: Restricted write/modify endpoints to wp-content/ directory to prevent WordPress core modifications.
-* Security: Added recursive protection to block AI access to hidden directories (.git) and critical credentials (.env).
+* Security: Added recursive protection to block API access to hidden directories (.git, .github) and credential files (.env, .htaccess).
+* Security: Free version is now strictly read-only — write, delete, rename, mkdir, and restore endpoints require an active Pro license.
 * Bugfix: Made transient-based rate limiting fully object-cache-safe for Redis/Memcached environments.
 * Bugfix: Normalized backslashes to forward slashes for Windows search path exclusions.
-* Compliance: Split into strictly read-only Free version and secure write-enabled Pro version.
 
 = 3.2.0 =
 * Added AI Agent Skill Pack with one-click agent prompt
@@ -147,15 +141,11 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Security: randomized log/backup storage directory for Nginx/LiteSpeed compatibility
 * Security: fixed XSS vector in admin error rendering
 * Security: HTTPS localhost check uses REMOTE_ADDR instead of SERVER_NAME
-* Cleaned up legacy AI Instructions buttons in favor of Skill Pack
-* Updated API Access tab with Skill Endpoint actions
 
 = 3.1.0 =
 * Added license management system with tier-based feature gating
 * Added modern admin dashboard with dark theme
 * Added connection test button
-* Added trust strip and status cards
-* Improved admin UI with tabs (Overview, API Access, License, Activity Log, Settings, Docs)
 
 = 3.0.0 =
 * Complete rewrite for public release
@@ -168,27 +158,10 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Added modern admin dashboard with tabs
 * Added activity log viewer with filtering
 * Added path restrictions for directory-level access control
-* Added auto-backup on all destructive operations
 * Added full internationalization (i18n) support
 * Improved security with HTTPS enforcement and protected files
-* Renamed API namespace to `remotewp/v1`
-* Changed auth header to `X-RemoteWP-Token`
-
-= 2.0.0 =
-* Internal release — class-based architecture
-* Token authentication
-* Basic filesystem CRUD
-
-= 1.0.0 =
-* Initial internal release
 
 == Upgrade Notice ==
 
 = 3.4.0 =
-Security hardening and bugfix release. Restricts write operations to wp-content/, protects hidden directories, and fixes object-cache transient rate limit issues. Recommends immediate upgrade.
-
-= 3.2.0 =
-Security hardening release. Fixes path traversal edge cases, IP spoofing, and XSS. Adds AI Agent Skill Pack for one-click agent integration.
-
-= 3.0.0 =
-Major update with new security features, WordPress Operations API, and modern admin dashboard. The API namespace changed from `xhouse-api/v1` to `remotewp/v1` and the auth header changed from `X-House-Token` to `X-RemoteWP-Token`. Backward compatibility with the old header is maintained.
+Security hardening release. Free version is now strictly read-only. Write operations restricted to wp-content/ only. Protects hidden directories and credential files. Recommended upgrade for all users.
