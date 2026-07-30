@@ -1,182 +1,175 @@
-# Connect AI Agents to WordPress — RemoteWP Plugin
+# RemoteWP - The AI-Ready WordPress Bridge
 
 [![License: GPL v2+](https://img.shields.io/badge/License-GPLv2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8+-21759b.svg)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4+-777bb4.svg)](https://php.net)
-[![Security: Read-Only](https://img.shields.io/badge/Security-Read--Only-green.svg)](https://remotewp.dev)
+[![Version](https://img.shields.io/badge/Version-3.0.0-6366f1.svg)](https://remotewp.dev)
 
-**RemoteWP** is the WordPress plugin that lets you connect AI agents — Claude, ChatGPT, Cursor, Google Gemini, or any HTTP-capable agent — to WordPress and WooCommerce sites via a secure REST API. No SSH. No FTP. No exposed credentials.
-
-🌐 **Website & Pro plans:** [remotewp.dev](https://remotewp.dev)
+**RemoteWP** turns any WordPress site into a secure, API-controllable endpoint for AI agents. Let Claude, ChatGPT, Cursor, Windsurf, or any automation tool manage your WordPress files, plugins, and configuration through a clean REST API - no SSH or FTP needed.
 
 ---
 
-## What is RemoteWP?
+## Features
 
-RemoteWP turns any self-hosted WordPress site into a secure, API-accessible endpoint for AI agents. Instead of giving your AI assistant full server access via SSH or FTP, RemoteWP provides scoped, token-authenticated REST API endpoints limited to paths you explicitly approve.
+### Security First
+- **Token Authentication** - 64-character cryptographic tokens via `X-RemoteWP-Token` header
+- **HTTPS Enforcement** - All API calls require SSL (except localhost)
+- **Rate Limiting** - Configurable requests per minute (default: 60/min)
+- **IP Whitelist** - Optional IP restriction with CIDR notation support
+- **Brute Force Protection** - Auto-lockout after failed authentication attempts
+- **Path Sandboxing** - All operations are restricted to WordPress ABSPATH
+- **Protected Files** - `wp-config.php`, `.env`, `.htaccess` are always protected
 
-**This is the official open-source Free (Core) version** — strictly read-only, designed to pass WordPress.org security review and give you safe AI agent access to audit and inspect any WordPress site.
+### Filesystem API (9 endpoints)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/remotewp/v1/list` | List directory contents with metadata |
+| `GET` | `/remotewp/v1/read` | Read file content (up to 5MB) |
+| `POST` | `/remotewp/v1/write` | Write/create file (auto-backup) |
+| `POST` | `/remotewp/v1/delete` | Delete file or directory (auto-backup) |
+| `POST` | `/remotewp/v1/rename` | Rename file or directory (auto-backup) |
+| `POST` | `/remotewp/v1/mkdir` | Create directory |
+| `POST` | `/remotewp/v1/restore` | Restore from backup |
+| `GET` | `/remotewp/v1/search` | Search file contents (grep-like) |
+| `GET` | `/remotewp/v1/status` | Plugin and server status |
 
-For full read/write automation (modify files, install plugins, manage WooCommerce, use the Agent Skill Pack), see **[RemoteWP Pro](https://remotewp.dev/#pricing)**.
+### WordPress Operations API (5 endpoints)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/remotewp/v1/wp/info` | Site info, theme, plugins summary |
+| `GET` | `/remotewp/v1/wp/plugins` | Full plugin list with update status |
+| `POST` | `/remotewp/v1/wp/plugin/toggle` | Activate/deactivate plugins |
+| `GET` | `/remotewp/v1/wp/options` | Read whitelisted WordPress options |
+| `POST` | `/remotewp/v1/wp/cache-clear` | Clear all caches and transients |
+
+### Granular Permissions
+| Profile | Operations |
+|---------|-----------|
+| **Read Only** | list, read, status, search, wp_info, wp_plugins, wp_options |
+| **Read & Write** | All read + write, mkdir, wp_cache_clear |
+| **Full Access** | All operations including delete, rename, plugin toggle |
 
 ---
 
-## How to Connect Claude, ChatGPT or Cursor to WordPress
+## Quick Start
 
-1. Install RemoteWP on your WordPress site (upload ZIP or install via wp-admin)
-2. Go to **Settings → RemoteWP** and generate your API token
-3. Copy your token and site URL
-4. Pass both to your AI agent:
-   - **Claude (MCP):** add as an HTTP tool with `X-RemoteWP-Token` header
-   - **Cursor:** add to your `.cursorrules` or agent config
-   - **ChatGPT / Codex:** create a Custom Action with your site URL
-   - **Any agent:** standard `GET` / `POST` over HTTPS with token header
-
-Your AI agent can now read files, list directories, audit plugin versions, and inspect WordPress configuration — all without SSH or FTP.
-
----
-
-## Key Features — Free Core (Read-Only)
-
-### 🔒 Security First
-- **Read-Only Enforcement** — No file-writing or modifying endpoints. Zero remote code execution risk.
-- **Token Authentication** — Secure 64-character token on every request via `X-RemoteWP-Token` header.
-- **Path Sandboxing** — All reads are restricted to `ABSPATH`. Directory traversal (`../`) is fully blocked.
-- **Protected System Files** — `wp-config.php`, `.env`, `.htaccess`, and server configs are permanently blacklisted.
-- **Rate Limiting & Lockout** — Built-in brute force and DDoS protection.
-- **IP Whitelisting** — Optionally restrict API access to specific IP ranges.
-
-### 📂 Filesystem API (Read-Only)
-- **List Directories** (`GET /wp-json/remotewp/v1/list`) — View file listings, sizes, modification dates.
-- **Read Files** (`GET /wp-json/remotewp/v1/read`) — Read theme, plugin, and config file contents.
-- **Site Status** (`GET /wp-json/remotewp/v1/status`) — WordPress version, active plugins, PHP version.
-- **Plugin Audit** (`GET /wp-json/remotewp/v1/plugins`) — List all installed plugins with version info.
-
----
-
-## Example API Request
-
-Connect any AI agent with a standard HTTP call:
-
-```http
-GET /wp-json/remotewp/v1/read?path=wp-content/themes/my-theme/style.css
-X-RemoteWP-Token: YOUR-API-TOKEN-HERE
+### 1. Install
+```bash
+# Upload to WordPress plugins directory
+wp plugin install remotewp.zip --activate
 ```
 
-```http
-GET /wp-json/remotewp/v1/list?path=wp-content/themes/my-theme/
-X-RemoteWP-Token: YOUR-API-TOKEN-HERE
+### 2. Get your token
+Navigate to **RemoteWP** in the WordPress admin sidebar and copy the auto-generated API token.
+
+### 3. Make your first API call
+```bash
+curl -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
+  https://yoursite.com/wp-json/remotewp/v1/status
 ```
 
-Works with Claude, Cursor, ChatGPT, Gemini, Antigravity, or any HTTP-capable AI agent.
+### 4. List files
+```bash
+curl -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
+  "https://yoursite.com/wp-json/remotewp/v1/list?path=wp-content/themes"
+```
+
+### 5. Read a file
+```bash
+curl -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
+  "https://yoursite.com/wp-json/remotewp/v1/read?path=wp-content/themes/mytheme/style.css"
+```
+
+### 6. Write a file
+```bash
+curl -X POST \
+  -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"path":"wp-content/test.txt","content":"Hello from AI!"}' \
+  https://yoursite.com/wp-json/remotewp/v1/write
+```
 
 ---
 
-## Compatible AI Agents
+## AI Agent Integration
 
-| Agent | Integration Method |
-|---|---|
-| **Claude (Anthropic)** | MCP HTTP tool or direct API call |
-| **Cursor** | REST call in `.cursorrules` or agent config |
-| **ChatGPT / Codex** | Custom GPT Action with OpenAPI schema |
-| **Google Gemini** | Function calling via HTTP |
-| **Antigravity AI** | Native HTTP tool |
-| **Any HTTP agent** | Standard GET/POST with token header |
+RemoteWP is designed to be consumed by AI agents. Here is how to configure popular tools:
+
+### Claude / Anthropic
+```python
+import requests
+
+SITE_URL = "https://yoursite.com/wp-json/remotewp/v1"
+TOKEN = "your_token_here"
+headers = {"X-RemoteWP-Token": TOKEN}
+
+# Read a file
+r = requests.get(
+    f"{SITE_URL}/read",
+    params={"path": "wp-content/themes/mytheme/functions.php"},
+    headers=headers,
+)
+print(r.json()["content"])
+```
+
+### Any HTTP Client
+The API accepts standard REST requests with JSON bodies. Any tool that can send HTTP requests with custom headers can use RemoteWP.
 
 ---
 
-## Installation
+## Architecture
 
-### From WordPress.org (recommended)
-1. Search for **RemoteWP** in the WordPress plugin directory
-2. Click Install → Activate
-3. Go to Settings → RemoteWP → Generate token
+```text
+remotewp/
+|-- remotewp.php              # Main plugin loader
+|-- uninstall.php             # Clean uninstall
+|-- readme.txt                # WordPress.org standard
+|-- includes/
+|   |-- class-remotewp-auth.php          # Token auth + HTTPS + IP whitelist
+|   |-- class-remotewp-rate-limiter.php  # Per-IP rate limiting + lockout
+|   |-- class-remotewp-permissions.php   # Granular permission profiles
+|   |-- class-remotewp-fs-api.php        # Filesystem REST endpoints
+|   |-- class-remotewp-wp-api.php        # WordPress operations endpoints
+|   |-- class-remotewp-admin.php         # Admin dashboard
+|   `-- class-remotewp-logger.php        # Audit logging + backups
+`-- admin/
+    |-- css/admin.css                    # Modern admin styles
+    `-- js/admin.js                      # Clipboard + interactions
+```
 
-### Manual ZIP Install
-1. Download the latest release ZIP from this repository
-2. Go to wp-admin → Plugins → Add New → Upload Plugin
-3. Upload and activate
-4. Go to Settings → RemoteWP → Generate token
+---
 
-### Requirements
+## Security Details
+
+- **Token Generation**: `bin2hex(random_bytes(32))` - 64 hex characters
+- **Token Comparison**: `hash_equals()` - timing-safe
+- **Path Validation**: `realpath()` + `strpos()` check against ABSPATH
+- **Protected Files**: wp-config.php, .env, .htaccess, .htpasswd, .user.ini, php.ini
+- **Auto-Backup**: Every write/delete/rename creates a timestamped backup
+- **Audit Log**: JSON-based log with IP, action, path, timestamp (500 entries, auto-rotated)
+- **Rate Limit**: Transient-based, per-IP, configurable (0 = disabled)
+- **Lockout**: After N failed auth attempts, IP is blocked for M minutes
+
+---
+
+## Requirements
+
 - WordPress 5.8+
 - PHP 7.4+
-- HTTPS strongly recommended (required for production use)
-
----
-
-## Free vs Pro
-
-| Feature | Free (Core) | Pro |
-|---|---|---|
-| Read files via REST API | ✅ | ✅ |
-| List directories | ✅ | ✅ |
-| Audit plugins & status | ✅ | ✅ |
-| Write / modify files | ❌ | ✅ |
-| Install / activate plugins | ❌ | ✅ |
-| WooCommerce endpoints | ❌ | ✅ |
-| Agent Skill Pack | ❌ | ✅ |
-| Unlimited WordPress sites | 1 site | ✅ |
-| Priority support | ❌ | ✅ |
-
-👉 **[Get RemoteWP Pro at remotewp.dev](https://remotewp.dev/#pricing)**
-
----
-
-## Security Model
-
-RemoteWP is built with a zero-trust approach for AI agent access:
-
-- Every request requires a valid token — no token, no access
-- Tokens are scoped to your WordPress installation only
-- Path whitelist limits what directories the agent can access
-- Rate limiting prevents automated abuse
-- Full audit log of every read operation (Pro)
-- No credentials are ever exposed to the AI agent
-
-This makes RemoteWP significantly safer than sharing SSH keys or FTP credentials with an AI assistant.
-
----
-
-## Why Not Just Use SSH or FTP?
-
-| | SSH / FTP | RemoteWP |
-|---|---|---|
-| Credential exposure | Full server access | Scoped to WP paths only |
-| Revoke access | Complex | One click in wp-admin |
-| Audit log | None | Full log (Pro) |
-| Path restriction | Manual / complex | Built-in whitelist |
-| Brute force protection | Server-level only | Built-in lockout |
-| Works with AI agents natively | ❌ | ✅ |
-
----
-
-## Contributing
-
-This is the open-source Core version. Contributions welcome:
-
-1. Fork this repo
-2. Create a branch: `git checkout -b feature/your-feature`
-3. Commit and push
-4. Open a Pull Request
-
-Please follow WordPress coding standards.
+- HTTPS (required in production, bypassed on localhost)
 
 ---
 
 ## License
 
-GPL v2 or later — see [LICENSE](LICENSE) for details.
+GPL-2.0-or-later - [Full License](LICENSE)
 
 ---
 
-## Links
+## Built By
 
-- 🌐 **Website:** [remotewp.dev](https://remotewp.dev)
-- 📦 **WordPress.org:** [wordpress.org/plugins/remotewp](https://wordpress.org/plugins/remotewp) *(pending review)*
-- 📖 **Documentation:** [remotewp.dev/docs/getting-started](https://remotewp.dev/docs/getting-started.html)
-- 💬 **Support:** info@remotewp.dev
+**[X-HOUSE SRL](https://xhouse.ro)** - Arad, Romania
 
----
-
-*Built by [X-HOUSE SRL](https://xhouse.ro) — Arad, Romania*
+- xander@xhouse.ro
+- 0735 785 335
+- [remotewp.dev](https://remotewp.dev)

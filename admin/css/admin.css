@@ -2109,3 +2109,29 @@
 	}
 }
 
+/* ─── Owner Lock: Header Lock Button ─── */
+.rwp-admin .rwp-header-lock-btn {
+	background: rgba(239, 68, 68, 0.08);
+	border: 1px solid rgba(239, 68, 68, 0.2);
+	border-radius: 8px;
+	padding: 4px 10px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	vertical-align: middle;
+	line-height: 1;
+}
+.rwp-admin .rwp-header-lock-btn:hover {
+	background: rgba(239, 68, 68, 0.15);
+	border-color: rgba(239, 68, 68, 0.4);
+	transform: translateY(-1px);
+}
+.rwp-admin .rwp-header-lock-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: #ef4444;
+}
+

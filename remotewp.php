@@ -3,7 +3,7 @@
  * Plugin Name: RemoteWP
  * Plugin URI:  https://remotewp.dev
  * Description: The AI-Ready WordPress Bridge. Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
- * Version:     3.4.0
+ * Version:     3.6.5
  * Author:      X-HOUSE SRL
  * Author URI:  https://xhouse.ro
  * License:     GPL-2.0-or-later
@@ -19,14 +19,43 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants
-define( 'REMOTEWP_VERSION', '3.4.0' );
+define( 'REMOTEWP_VERSION', '3.6.5' );
 define( 'REMOTEWP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define( 'REMOTEWP_API_NAMESPACE', 'helper/v1' );
+
 
 // Open Core: detect if Pro module is installed
-define( 'REMOTEWP_IS_PRO', file_exists( REMOTEWP_PLUGIN_DIR . 'pro/class-remotewp-fs-api-pro.php' ) );
+// Full build: pro/ folder exists directly (internal/admin use)
+// Pro build: module downloaded from server (stored encrypted in wp-content/remotewp-pro/)
 define( 'REMOTEWP_IS_FULL', file_exists( REMOTEWP_PLUGIN_DIR . 'pro/full.txt' ) );
+define( 'REMOTEWP_HAS_LOCAL_PRO', file_exists( REMOTEWP_PLUGIN_DIR . 'pro/class-remotewp-fs-api-pro.php' ) );
+define( 'REMOTEWP_IS_PRO', REMOTEWP_HAS_LOCAL_PRO || file_exists( WP_CONTENT_DIR . '/remotewp-pro/module.enc' ) );
+
+// Internal license key for Full builds (auto-activated, no manual entry needed)
+// Encoded with XOR + base64 — not readable as plain text in source
+define( 'REMOTEWP_INTERNAL_KEY_ENC', 'IDI9PTtIT0doTUVYN0NWcncEcQ9fVyxdQA==' );
+
+/**
+ * Decode the internal license key.
+ *
+ * @return string Decoded key or empty string.
+ */
+function remotewp_decode_internal_key() {
+	$enc = REMOTEWP_INTERNAL_KEY_ENC;
+	if ( empty( $enc ) ) {
+		return '';
+	}
+	$xor_key = 'remotewp_xhouse_2026';
+	$decoded = base64_decode( $enc );
+	$result  = '';
+	$kl      = strlen( $xor_key );
+	for ( $i = 0, $l = strlen( $decoded ); $i < $l; $i++ ) {
+		$result .= chr( ord( $decoded[ $i ] ) ^ ord( $xor_key[ $i % $kl ] ) );
+	}
+	return $result;
+}
 
 /**
  * Load plugin textdomain for translations.
@@ -50,11 +79,14 @@ function remotewp_load_classes() {
 	require_once $includes . 'class-remotewp-auth.php';
 	require_once $includes . 'class-remotewp-fs-api.php';
 	require_once $includes . 'class-remotewp-admin.php';
+	require_once $includes . 'class-remotewp-updater.php';
 
-	// Auto-updater is only included in Pro builds (not in WP.org free version)
+	// Pro loader (always loaded — handles module lifecycle)
+	require_once $includes . 'class-remotewp-pro-loader.php';
 
-	// Pro classes (only if pro/ folder exists)
-	if ( REMOTEWP_IS_PRO ) {
+	// Pro classes loading
+	if ( REMOTEWP_HAS_LOCAL_PRO ) {
+		// Full/internal build: load directly from pro/ folder
 		$pro = REMOTEWP_PLUGIN_DIR . 'pro/';
 		require_once $pro . 'class-remotewp-fs-api-pro.php';
 		require_once $pro . 'class-remotewp-wp-api.php';
@@ -78,10 +110,22 @@ function remotewp_init() {
 	new RemoteWP_FS_API( $auth, $permissions, $logger, $license );
 	new RemoteWP_Admin( $auth, $permissions, $logger, $license );
 
-	// Auto-updater: only active in Pro builds (file not included in free/WP.org version)
+	// Auto-updater (Pro builds with active license)
+	new RemoteWP_Updater();
 
-	// Pro endpoints (only if pro/ folder exists)
-	if ( REMOTEWP_IS_PRO ) {
+	// Pro endpoints loading
+	$pro_loaded = false;
+
+	if ( REMOTEWP_HAS_LOCAL_PRO ) {
+		// Full/internal build: classes already loaded directly
+		$pro_loaded = true;
+	} elseif ( REMOTEWP_IS_PRO ) {
+		// Server-delivered Pro: decrypt and load module at runtime
+		$loader     = new RemoteWP_Pro_Loader( $license );
+		$pro_loaded = $loader->load_module();
+	}
+
+	if ( $pro_loaded && class_exists( 'RemoteWP_FS_API_Pro' ) ) {
 		new RemoteWP_FS_API_Pro( $auth, $permissions, $logger, $license );
 		new RemoteWP_WP_API( $auth, $permissions, $logger, $license );
 		new RemoteWP_Admin_Pro( $auth, $permissions, $logger, $license );
@@ -93,6 +137,9 @@ add_action( 'plugins_loaded', 'remotewp_init' );
  * Activation: generate initial token and set default options.
  */
 function remotewp_activate() {
+	// Load core classes to prevent Class 'RemoteWP_License' not found fatal error during activation
+	remotewp_load_classes();
+
 	// Generate token if not exists
 	if ( ! get_option( 'remotewp_api_token' ) ) {
 		$token = '';
@@ -124,6 +171,7 @@ function remotewp_activate() {
 		'remotewp_trust_proxy'         => 0,
 		'remotewp_token_ttl'           => 0,  // 0 = never expire (backward compatible)
 		'remotewp_token_created_at'    => time(),
+		'remotewp_master_password'     => '',  // Owner lock: empty = disabled (Full build only)
 	);
 
 	foreach ( $defaults as $key => $value ) {
@@ -138,12 +186,17 @@ function remotewp_activate() {
 		add_option( 'remotewp_license_tier', 'free' );
 	}
 
+	// Full build: auto-activate with internal key (no manual entry needed)
+	$internal_key = remotewp_decode_internal_key();
+	if ( REMOTEWP_IS_FULL && ! empty( $internal_key ) && 'active' !== get_option( 'remotewp_license_status' ) ) {
+		$license = new RemoteWP_License();
+		$license->auto_activate( $internal_key );
+	}
+
 	// Schedule daily license verification (only for Pro builds)
 	if ( REMOTEWP_IS_PRO && ! wp_next_scheduled( 'remotewp_daily_license_check' ) ) {
 		wp_schedule_event( time(), 'daily', 'remotewp_daily_license_check' );
 	}
-
-	flush_rewrite_rules();
 }
 register_activation_hook( __FILE__, 'remotewp_activate' );
 
@@ -159,16 +212,20 @@ function remotewp_deactivate() {
 
 	// Remove cron
 	wp_clear_scheduled_hook( 'remotewp_daily_license_check' );
-
-	flush_rewrite_rules();
 }
 
 /**
  * Daily license verification cron callback.
  */
 function remotewp_cron_verify_license() {
-	$license = new RemoteWP_License();
-	$license->verify();
+	$license  = new RemoteWP_License();
+	$is_valid = $license->verify();
+
+	// Forward result to Pro loader for grace period tracking
+	if ( class_exists( 'RemoteWP_Pro_Loader' ) ) {
+		$loader = new RemoteWP_Pro_Loader( $license );
+		$loader->handle_verification_result( $is_valid );
+	}
 }
 add_action( 'remotewp_daily_license_check', 'remotewp_cron_verify_license' );
 register_deactivation_hook( __FILE__, 'remotewp_deactivate' );

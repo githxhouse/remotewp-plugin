@@ -280,6 +280,16 @@ class RemoteWP_Permissions {
 		if ( ! $wp_content_dir ) {
 			$wp_content_dir = realpath( ABSPATH . 'wp-content' );
 		}
+
+		// Exception: Allow writing llms.txt or llms-full.txt in the WordPress root directory
+		$basename = strtolower( basename( $real_path ) );
+		if ( in_array( $basename, array( 'llms.txt', 'llms-full.txt' ), true ) ) {
+			$real_base = realpath( ABSPATH );
+			if ( dirname( $real_path ) === $real_base ) {
+				return true;
+			}
+		}
+
 		if ( $wp_content_dir ) {
 			$real_path_normalized      = str_replace( '\\', '/', $real_path );
 			$wp_content_dir_normalized = str_replace( '\\', '/', $wp_content_dir );
@@ -293,6 +303,7 @@ class RemoteWP_Permissions {
 			}
 		}
 		return true;
+
 	}
 
 	/**

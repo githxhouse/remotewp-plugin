@@ -21,6 +21,11 @@ class RemoteWP_Rate_Limiter {
 	 * @return true|WP_Error True if allowed, WP_Error if rate limited.
 	 */
 	public function check( $ip ) {
+		// Whitelisted IPs bypass all rate limiting and lockout
+		if ( $this->is_whitelisted( $ip ) ) {
+			return true;
+		}
+
 		// Check lockout first
 		$lockout = $this->is_locked_out( $ip );
 		if ( is_wp_error( $lockout ) ) {
@@ -89,6 +94,11 @@ class RemoteWP_Rate_Limiter {
 			// Lock out the IP
 			set_transient( 'remotewp_lockout_' . md5( $ip ), true, $duration * MINUTE_IN_SECONDS );
 			delete_transient( $key );
+
+			// Store IP-to-hash mapping for admin display
+			$ip_map = get_option( 'remotewp_lockout_ip_map', array() );
+			$ip_map[ md5( $ip ) ] = $ip;
+			update_option( 'remotewp_lockout_ip_map', $ip_map, false );
 		} else {
 			set_transient( $key, $failures, $duration * MINUTE_IN_SECONDS );
 		}
@@ -126,5 +136,46 @@ class RemoteWP_Rate_Limiter {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Check if an IP is in the whitelist.
+	 *
+	 * @param string $ip Client IP address.
+	 * @return bool True if whitelisted.
+	 */
+	private function is_whitelisted( $ip ) {
+		$whitelist = get_option( 'remotewp_ip_whitelist', '' );
+		if ( empty( $whitelist ) ) {
+			return false;
+		}
+
+		$entries = array_filter( array_map( 'trim', explode( "\n", $whitelist ) ) );
+		foreach ( $entries as $entry ) {
+			if ( $entry === $ip ) {
+				return true;
+			}
+			// CIDR support
+			if ( strpos( $entry, '/' ) !== false && $this->ip_in_cidr( $ip, $entry ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if an IP is within a CIDR range.
+	 *
+	 * @param string $ip   IP address.
+	 * @param string $cidr CIDR notation (e.g., 192.168.1.0/24).
+	 * @return bool
+	 */
+	private function ip_in_cidr( $ip, $cidr ) {
+		list( $subnet, $bits ) = explode( '/', $cidr );
+		$ip_long     = ip2long( $ip );
+		$subnet_long = ip2long( $subnet );
+		$mask        = -1 << ( 32 - (int) $bits );
+		return ( $ip_long & $mask ) === ( $subnet_long & $mask );
 	}
 }

@@ -52,11 +52,20 @@ class RemoteWP_Admin {
 
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_post_remotewp_save_settings', array( $this, 'handle_save_settings' ) );
+		add_action( 'admin_post_remotewp_unban_ip', array( $this, 'handle_unban_ip' ) );
+		add_action( 'admin_post_remotewp_unban_all', array( $this, 'handle_unban_all' ) );
 		add_action( 'admin_post_remotewp_regenerate_token', array( $this, 'handle_regenerate_token' ) );
 		add_action( 'admin_post_remotewp_activate_license', array( $this, 'handle_activate_license' ) );
 		add_action( 'admin_post_remotewp_deactivate_license', array( $this, 'handle_deactivate_license' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'in_admin_header', array( $this, 'suppress_external_notices' ), 999 );
+
+		// Owner Lock (Full and Pro builds)
+		if ( ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) || ( defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ) ) {
+			add_action( 'admin_post_remotewp_unlock', array( $this, 'handle_unlock' ) );
+			add_action( 'admin_post_remotewp_lock_session', array( $this, 'handle_lock_session' ) );
+			add_action( 'admin_post_remotewp_set_master_password', array( $this, 'handle_set_master_password' ) );
+		}
 	}
 
 	/**
@@ -111,7 +120,7 @@ class RemoteWP_Admin {
 
 		wp_localize_script( 'remotewp-admin', 'remotewpAdmin', array(
 			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-			'restUrl'   => rest_url( 'remotewp/v1/' ),
+			'restUrl'   => rest_url( REMOTEWP_API_NAMESPACE . '/' ),
 			'nonce'     => wp_create_nonce( 'remotewp_admin' ),
 			'i18n'      => array(
 				'copied'        => __( 'Copied!', 'remotewp' ),
@@ -154,6 +163,12 @@ class RemoteWP_Admin {
 			return;
 		}
 
+		// Owner Lock: if master password is set and session is NOT unlocked, show lock screen
+		if ( $this->is_owner_locked() ) {
+			$this->render_lock_screen();
+			return;
+		}
+
 		$active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'dashboard';
 		$token      = $this->auth->get_token();
 		$settings   = $this->get_settings();
@@ -187,6 +202,16 @@ class RemoteWP_Admin {
 					</div>
 				</div>
 				<div class="rwp-header-right">
+					<?php if ( ( ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) || ( defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ) ) && $this->has_master_password() ) : ?>
+						<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" style="display:inline;">
+							<input type="hidden" name="action" value="remotewp_lock_session">
+							<?php wp_nonce_field( 'remotewp_lock_session' ); ?>
+							<button type="submit" class="rwp-header-lock-btn" title="<?php esc_attr_e( 'Lock RemoteWP', 'remotewp' ); ?>">
+								<span class="dashicons dashicons-lock"></span>
+							</button>
+						</form>
+						<span class="rwp-header-divider">|</span>
+					<?php endif; ?>
 					<a href="https://remotewp.dev" target="_blank" class="rwp-header-link"><?php esc_html_e( 'Documentation', 'remotewp' ); ?></a>
 					<span class="rwp-header-divider">|</span>
 					<a href="https://remotewp.dev/support" target="_blank" class="rwp-header-link"><?php esc_html_e( 'Support', 'remotewp' ); ?></a>
@@ -455,7 +480,7 @@ class RemoteWP_Admin {
 				</p>
 
 				<?php
-				$skill_url    = rest_url( 'remotewp/v1/skill' );
+				$skill_url    = rest_url( REMOTEWP_API_NAMESPACE . '/skill' );
 				$masked_token = str_repeat( '•', 8 ) . substr( $token, -4 );
 				$full_prompt  = sprintf(
 					'Read the RemoteWP agent skill at %s (pass header X-RemoteWP-Token: %s) and use it to manage this WordPress site at %s.',
@@ -681,7 +706,7 @@ class RemoteWP_Admin {
 	 * @param string $token Current API token.
 	 */
 	private function render_access_tab( $token ) {
-		$api_url = rest_url( 'remotewp/v1/' );
+		$api_url = rest_url( REMOTEWP_API_NAMESPACE . '/' );
 		$is_pro  = apply_filters( 'remotewp_is_pro_build', false );
 		?>
 		<!-- API Access Card -->
@@ -827,7 +852,7 @@ class RemoteWP_Admin {
 					</div>
 				</div>
 				<div class="rwp-integration-actions" style="margin-top: 20px;">
-					<?php $skill_endpoint = rest_url( 'remotewp/v1/skill' ); ?>
+					<?php $skill_endpoint = rest_url( REMOTEWP_API_NAMESPACE . '/skill' ); ?>
 					<a href="<?php echo esc_url( $skill_endpoint ); ?>" target="_blank" class="button button-primary rwp-btn-md">
 						<?php esc_html_e( 'View Skill Endpoint', 'remotewp' ); ?>
 					</a>
@@ -1073,13 +1098,227 @@ class RemoteWP_Admin {
 				</div>
 			</div>
 
+			<!-- Active Lockouts Card -->
+			<?php
+			$locked_ips = $this->get_locked_out_ips();
+			?>
+			<div class="remotewp-card" style="margin-top: 16px;">
+				<div class="remotewp-card-header" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));">
+					<h2>
+						<span class="dashicons dashicons-shield" style="margin-right:6px; color: #ef4444;"></span>
+						<?php esc_html_e( 'Active Lockouts', 'remotewp' ); ?>
+						<?php if ( ! empty( $locked_ips ) ) : ?>
+							<span style="background:#ef4444; color:#fff; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:8px;">
+								<?php echo count( $locked_ips ); ?>
+							</span>
+						<?php endif; ?>
+					</h2>
+				</div>
+				<div class="remotewp-card-body">
+					<?php if ( empty( $locked_ips ) ) : ?>
+						<p style="color:#6b7280; font-style:italic;">
+							<?php esc_html_e( 'No IPs are currently locked out.', 'remotewp' ); ?>
+						</p>
+					<?php else : ?>
+						<table class="widefat striped" style="margin-bottom:12px;">
+							<thead>
+								<tr>
+									<th><?php esc_html_e( 'IP Address', 'remotewp' ); ?></th>
+									<th><?php esc_html_e( 'Expires', 'remotewp' ); ?></th>
+									<th style="width:100px;"><?php esc_html_e( 'Action', 'remotewp' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $locked_ips as $entry ) : ?>
+									<tr>
+										<td><code><?php echo esc_html( $entry['ip'] ); ?></code></td>
+										<td><?php echo esc_html( $entry['expires'] ); ?></td>
+										<td>
+											<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;">
+												<input type="hidden" name="action" value="remotewp_unban_ip">
+												<?php wp_nonce_field( 'remotewp_unban_ip' ); ?>
+												<input type="hidden" name="ip" value="<?php echo esc_attr( $entry['ip'] ); ?>">
+												<button type="submit" class="button button-small" style="color:#ef4444; border-color:#ef4444;">
+													<?php esc_html_e( 'Unban', 'remotewp' ); ?>
+												</button>
+											</form>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="remotewp_unban_all">
+							<?php wp_nonce_field( 'remotewp_unban_all' ); ?>
+							<button type="submit" class="button" style="color:#ef4444; border-color:#ef4444;">
+								<?php esc_html_e( 'Unban All', 'remotewp' ); ?>
+							</button>
+						</form>
+					<?php endif; ?>
+				</div>
+			</div>
+
 			<p class="submit">
 				<button type="submit" class="button button-primary button-hero">
 					<?php esc_html_e( 'Save Settings', 'remotewp' ); ?>
 				</button>
 			</p>
 		</form>
+
+		<?php // Owner Access — Master Password (Full and Pro builds) ?>
+		<?php if ( ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) || ( defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ) ) : ?>
+		<div class="remotewp-card" style="margin-top: 28px;">
+			<div class="remotewp-card-header" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));">
+				<h2><span class="dashicons dashicons-shield-alt" style="margin-right:6px; color: #ef4444;"></span><?php esc_html_e( 'Owner Access Lock', 'remotewp' ); ?></h2>
+			</div>
+			<div class="remotewp-card-body">
+				<p style="color: #9ca9be; font-size: 13px; margin: 0 0 16px; line-height: 1.7;">
+					<?php esc_html_e( 'Set a master password to lock the RemoteWP admin interface. When locked, nobody can see the dashboard, tokens, or settings without entering the correct password. The REST API continues to work independently.', 'remotewp' ); ?>
+				</p>
+
+				<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+					<input type="hidden" name="action" value="remotewp_set_master_password">
+					<?php wp_nonce_field( 'remotewp_set_master_password' ); ?>
+
+					<div class="remotewp-field">
+						<label for="remotewp_master_pw"><?php esc_html_e( 'Master Password', 'remotewp' ); ?></label>
+						<input type="password" name="remotewp_master_pw" id="remotewp_master_pw" value=""
+						       placeholder="<?php echo $this->has_master_password() ? esc_attr__( '••••••••••• (password set — leave empty to keep current)', 'remotewp' ) : esc_attr__( 'Enter a master password to enable lock', 'remotewp' ); ?>"
+						       class="large-text" autocomplete="new-password">
+						<p class="description">
+							<?php if ( $this->has_master_password() ) : ?>
+								<span style="color: #22c55e;">●</span> <?php esc_html_e( 'Lock is ACTIVE. Leave empty to keep current password, or enter a new one to change it.', 'remotewp' ); ?>
+							<?php else : ?>
+								<span style="color: #64748b;">●</span> <?php esc_html_e( 'Lock is DISABLED. Enter a password to enable the owner lock screen.', 'remotewp' ); ?>
+							<?php endif; ?>
+						</p>
+					</div>
+
+					<?php if ( $this->has_master_password() ) : ?>
+					<div class="remotewp-field">
+						<label>
+							<input type="checkbox" name="remotewp_remove_master_pw" value="1">
+							<?php esc_html_e( 'Remove master password (disable lock screen)', 'remotewp' ); ?>
+						</label>
+					</div>
+					<?php endif; ?>
+
+					<button type="submit" class="button button-primary">
+						<?php echo $this->has_master_password() ? esc_html__( 'Update Password', 'remotewp' ) : esc_html__( 'Set Master Password', 'remotewp' ); ?>
+					</button>
+				</form>
+			</div>
+		</div>
+		<?php endif; ?>
+
 		<?php
+	}
+
+	/**
+	 * Get list of currently locked out IPs from transients.
+	 *
+	 * @return array Array of [ 'ip' => string, 'expires' => string ].
+	 */
+	private function get_locked_out_ips() {
+		global $wpdb;
+
+		$locked = array();
+		$prefix = '_transient_remotewp_lockout_';
+		$timeout_prefix = '_transient_timeout_remotewp_lockout_';
+
+		// Query transients that match lockout pattern
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT o.option_name, t.option_value as timeout_value
+				 FROM {$wpdb->options} o
+				 LEFT JOIN {$wpdb->options} t ON t.option_name = CONCAT('_transient_timeout_', SUBSTRING(o.option_name, 13))
+				 WHERE o.option_name LIKE %s
+				 AND o.option_value = '1'",
+				$wpdb->esc_like( $prefix ) . '%'
+			)
+		);
+
+		if ( ! $results ) {
+			return $locked;
+		}
+
+		// We need a reverse lookup — transient names use md5 hashes.
+		// Store the IP in a companion transient for display purposes.
+		$ip_map = get_option( 'remotewp_lockout_ip_map', array() );
+
+		foreach ( $results as $row ) {
+			$hash = str_replace( $prefix, '', $row->option_name );
+			$ip = isset( $ip_map[ $hash ] ) ? $ip_map[ $hash ] : $hash;
+			$expires = ! empty( $row->timeout_value ) ? human_time_diff( time(), (int) $row->timeout_value ) : '?';
+
+			if ( ! empty( $row->timeout_value ) && (int) $row->timeout_value < time() ) {
+				continue; // Already expired
+			}
+
+			$locked[] = array(
+				'ip'      => $ip,
+				'hash'    => $hash,
+				'expires' => sprintf( __( 'in %s', 'remotewp' ), $expires ),
+			);
+		}
+
+		return $locked;
+	}
+
+	/**
+	 * Handle unbanning a single IP.
+	 */
+	public function handle_unban_ip() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission.', 'remotewp' ) );
+		}
+		check_admin_referer( 'remotewp_unban_ip' );
+
+		$ip = sanitize_text_field( wp_unslash( $_POST['ip'] ?? '' ) );
+		if ( ! empty( $ip ) ) {
+			delete_transient( 'remotewp_lockout_' . md5( $ip ) );
+			delete_transient( 'remotewp_fails_' . md5( $ip ) );
+
+			// Also try direct hash (in case IP display is already the hash)
+			delete_transient( 'remotewp_lockout_' . $ip );
+			delete_transient( 'remotewp_fails_' . $ip );
+		}
+
+		wp_safe_redirect( add_query_arg( array( 'page' => 'remotewp', 'tab' => 'settings', 'unbanned' => '1' ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	/**
+	 * Handle unbanning all IPs.
+	 */
+	public function handle_unban_all() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission.', 'remotewp' ) );
+		}
+		check_admin_referer( 'remotewp_unban_all' );
+
+		global $wpdb;
+
+		// Delete all lockout transients
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_remotewp_lockout_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_remotewp_lockout_' ) . '%'
+			)
+		);
+
+		// Also clear failure counters
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_remotewp_fails_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_remotewp_fails_' ) . '%'
+			)
+		);
+
+		wp_safe_redirect( add_query_arg( array( 'page' => 'remotewp', 'tab' => 'settings', 'unbanned' => 'all' ), admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	/**
@@ -1369,6 +1608,23 @@ class RemoteWP_Admin {
 		if ( isset( $_GET['license_error'] ) ) {
 			echo '<div class="remotewp-notice remotewp-notice-warning"><p>' . esc_html( wp_unslash( $_GET['license_error'] ) ) . '</p></div>';
 		}
+
+		// Owner Lock notices
+		if ( isset( $_GET['master_pw_set'] ) ) {
+			echo '<div class="remotewp-notice remotewp-notice-success"><p>' . esc_html__( 'Master password has been set. The lock screen is now active.', 'remotewp' ) . '</p></div>';
+		}
+
+		if ( isset( $_GET['master_pw_updated'] ) ) {
+			echo '<div class="remotewp-notice remotewp-notice-success"><p>' . esc_html__( 'Master password updated successfully.', 'remotewp' ) . '</p></div>';
+		}
+
+		if ( isset( $_GET['master_pw_removed'] ) ) {
+			echo '<div class="remotewp-notice remotewp-notice-warning"><p>' . esc_html__( 'Master password removed. The lock screen is now disabled.', 'remotewp' ) . '</p></div>';
+		}
+
+		if ( isset( $_GET['unlock_error'] ) ) {
+			echo '<div class="remotewp-notice remotewp-notice-warning"><p>' . esc_html__( 'Incorrect master password. Please try again.', 'remotewp' ) . '</p></div>';
+		}
 	}
 
 	/**
@@ -1415,7 +1671,7 @@ class RemoteWP_Admin {
 							<button type="button" class="button button-secondary remotewp-btn-copy" data-target="rwp-docs-endpoint-url">
 								<?php esc_html_e( 'Copy REST API Endpoint', 'remotewp' ); ?>
 							</button>
-							<span id="rwp-docs-endpoint-url" style="display:none;"><?php echo esc_url( rest_url( 'remotewp/v1/instructions' ) ); ?></span>
+							<span id="rwp-docs-endpoint-url" style="display:none;"><?php echo esc_url( rest_url( REMOTEWP_API_NAMESPACE . '/instructions' ) ); ?></span>
 						</div>
 					</div>
 
@@ -1438,7 +1694,7 @@ class RemoteWP_Admin {
 						<p class="rwp-docs-text">
 							<?php esc_html_e( 'You or your AI agent can verify authentication status and server compatibility with a simple GET request:', 'remotewp' ); ?>
 						</p>
-						<pre class="rwp-docs-code"><code>curl -X GET "<?php echo esc_url( rest_url( 'remotewp/v1/status' ) ); ?>" \
+						<pre class="rwp-docs-code"><code>curl -X GET "<?php echo esc_url( rest_url( REMOTEWP_API_NAMESPACE . '/status' ) ); ?>" \
   -H "X-RemoteWP-Token: YOUR_SECURE_API_TOKEN" \
   -H "Content-Type: application/json"</code></pre>
 					</div>
@@ -1567,5 +1823,318 @@ class RemoteWP_Admin {
 			</div>
 		</div>
 		<?php
+	}
+
+	// ─── Owner Lock System (Full Build Only) ──────────────────────────────
+
+	/**
+	 * Check if the admin interface is currently locked.
+	 *
+	 * Returns true if: Full build + master password set + session NOT unlocked.
+	 *
+	 * @return bool
+	 */
+	private function is_owner_locked() {
+		if ( defined( 'REMOTEWP_DISABLE_LOCK' ) && REMOTEWP_DISABLE_LOCK ) {
+			return false;
+		}
+
+		if ( ! ( ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) || ( defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ) ) ) {
+			return false;
+		}
+
+		if ( ! $this->has_master_password() ) {
+			return false;
+		}
+
+		return ! $this->is_owner_unlocked();
+	}
+
+	/**
+	 * Check if a master password is configured.
+	 *
+	 * @return bool
+	 */
+	private function has_master_password() {
+		$hash = get_option( 'remotewp_master_password', '' );
+		return ! empty( $hash );
+	}
+
+	/**
+	 * Check if the current user has an active unlock session.
+	 *
+	 * Uses a transient per user with 24-hour expiry.
+	 *
+	 * @return bool
+	 */
+	private function is_owner_unlocked() {
+		$user_id = get_current_user_id();
+		return (bool) get_transient( 'remotewp_unlocked_' . $user_id );
+	}
+
+	/**
+	 * Render the lock screen.
+	 *
+	 * Shows only logo + password field + unlock button. Nothing else.
+	 */
+	private function render_lock_screen() {
+		$has_error = isset( $_GET['unlock_error'] );
+		?>
+		<div class="wrap rwp-admin remotewp-wrap">
+			<style>
+				.rwp-lock-overlay {
+					min-height: 70vh;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+				}
+				.rwp-lock-card {
+					background: #0d1320;
+					border: 1px solid rgba(255,255,255,0.06);
+					border-radius: 20px;
+					padding: 48px 40px 40px;
+					max-width: 420px;
+					width: 100%;
+					text-align: center;
+					box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03) inset;
+				}
+				.rwp-lock-icon {
+					width: 64px;
+					height: 64px;
+					border-radius: 50%;
+					background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05));
+					border: 1px solid rgba(99,102,241,0.2);
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					margin: 0 auto 24px;
+				}
+				.rwp-lock-icon .dashicons {
+					font-size: 28px;
+					width: 28px;
+					height: 28px;
+					color: #818cf8;
+				}
+				.rwp-lock-title {
+					color: #ffffff;
+					font-size: 22px;
+					font-weight: 700;
+					margin: 0 0 8px;
+					letter-spacing: -0.3px;
+				}
+				.rwp-lock-subtitle {
+					color: rgba(255,255,255,0.5);
+					font-size: 13px;
+					margin: 0 0 32px;
+					line-height: 1.5;
+				}
+				.rwp-lock-input {
+					width: 100%;
+					padding: 14px 18px;
+					background: rgba(255,255,255,0.04);
+					border: 1px solid rgba(255,255,255,0.1);
+					border-radius: 12px;
+					color: #ffffff;
+					font-size: 15px;
+					outline: none;
+					transition: border-color 0.2s, box-shadow 0.2s;
+					box-sizing: border-box;
+					margin-bottom: 16px;
+					letter-spacing: 2px;
+				}
+				.rwp-lock-input:focus {
+					border-color: #6366f1;
+					box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+				}
+				.rwp-lock-input.rwp-lock-error {
+					border-color: #ef4444;
+					box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+					animation: rwp-shake 0.4s ease;
+				}
+				.rwp-lock-btn {
+					width: 100%;
+					padding: 14px 24px;
+					background: linear-gradient(135deg, #6366f1, #4f46e5);
+					color: #ffffff;
+					border: none;
+					border-radius: 12px;
+					font-size: 14px;
+					font-weight: 600;
+					cursor: pointer;
+					transition: transform 0.15s, box-shadow 0.15s;
+					letter-spacing: 0.3px;
+				}
+				.rwp-lock-btn:hover {
+					transform: translateY(-1px);
+					box-shadow: 0 6px 20px rgba(99,102,241,0.35);
+				}
+				.rwp-lock-error-msg {
+					color: #fca5a5;
+					font-size: 12px;
+					margin: -8px 0 16px;
+					text-align: left;
+				}
+				.rwp-lock-footer {
+					margin-top: 28px;
+					color: rgba(255,255,255,0.25);
+					font-size: 11px;
+				}
+				.rwp-lock-footer img {
+					height: 24px;
+					opacity: 0.4;
+					margin-bottom: 8px;
+				}
+				@keyframes rwp-shake {
+					0%, 100% { transform: translateX(0); }
+					25% { transform: translateX(-6px); }
+					50% { transform: translateX(6px); }
+					75% { transform: translateX(-4px); }
+				}
+			</style>
+
+			<div class="rwp-lock-overlay">
+				<div class="rwp-lock-card">
+					<div class="rwp-lock-icon">
+						<span class="dashicons dashicons-lock"></span>
+					</div>
+					<h2 class="rwp-lock-title"><?php esc_html_e( 'RemoteWP is locked', 'remotewp' ); ?></h2>
+					<p class="rwp-lock-subtitle"><?php esc_html_e( 'Enter the owner password to access the dashboard.', 'remotewp' ); ?></p>
+
+					<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+						<input type="hidden" name="action" value="remotewp_unlock">
+						<?php wp_nonce_field( 'remotewp_unlock' ); ?>
+
+						<input type="password" name="remotewp_unlock_pw" class="rwp-lock-input<?php echo $has_error ? ' rwp-lock-error' : ''; ?>"
+						       placeholder="<?php esc_attr_e( 'Master Password', 'remotewp' ); ?>" autofocus autocomplete="current-password">
+
+						<?php if ( $has_error ) : ?>
+							<p class="rwp-lock-error-msg"><?php esc_html_e( 'Incorrect password. Please try again.', 'remotewp' ); ?></p>
+						<?php endif; ?>
+
+						<button type="submit" class="rwp-lock-btn">
+							<?php esc_html_e( 'Unlock', 'remotewp' ); ?>
+						</button>
+					</form>
+
+					<div class="rwp-lock-footer">
+						<img src="<?php echo esc_url( REMOTEWP_PLUGIN_URL . 'assets/logo-remotewp.png' ); ?>" alt="RemoteWP">
+						<p>RemoteWP v<?php echo esc_html( REMOTEWP_VERSION ); ?> &bull; X-HOUSE SRL</p>
+					</div>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Handle unlock form submission.
+	 *
+	 * Verifies the submitted password against the stored hash.
+	 * If correct, sets a 24-hour transient for the current user.
+	 */
+	public function handle_unlock() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'remotewp' ) );
+		}
+
+		check_admin_referer( 'remotewp_unlock' );
+
+		$password = isset( $_POST['remotewp_unlock_pw'] ) ? trim( wp_unslash( $_POST['remotewp_unlock_pw'] ) ) : '';
+		$stored_hash = get_option( 'remotewp_master_password', '' );
+
+		if ( ! empty( $stored_hash ) && wp_check_password( $password, $stored_hash ) ) {
+			// Unlock: set transient for 24 hours
+			$user_id = get_current_user_id();
+			set_transient( 'remotewp_unlocked_' . $user_id, true, DAY_IN_SECONDS );
+
+			$this->logger->log( 'OWNER_UNLOCK', '', 'Owner unlocked admin (User ID: ' . $user_id . ')' );
+
+			wp_redirect( admin_url( 'admin.php?page=remotewp' ) );
+			exit;
+		}
+
+		// Wrong password
+		$this->logger->log( 'OWNER_UNLOCK_FAIL', '', 'Failed unlock attempt (User ID: ' . get_current_user_id() . ')', 'error' );
+
+		wp_redirect( admin_url( 'admin.php?page=remotewp&unlock_error=1' ) );
+		exit;
+	}
+
+	/**
+	 * Handle manual lock (logout from owner session).
+	 */
+	public function handle_lock_session() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'remotewp' ) );
+		}
+
+		check_admin_referer( 'remotewp_lock_session' );
+
+		$user_id = get_current_user_id();
+		delete_transient( 'remotewp_unlocked_' . $user_id );
+
+		$this->logger->log( 'OWNER_LOCK', '', 'Owner manually locked admin (User ID: ' . $user_id . ')' );
+
+		wp_redirect( admin_url( 'admin.php?page=remotewp' ) );
+		exit;
+	}
+
+	/**
+	 * Handle setting/changing/removing the master password.
+	 */
+	public function handle_set_master_password() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'remotewp' ) );
+		}
+
+		check_admin_referer( 'remotewp_set_master_password' );
+
+		// Check if user wants to remove the password
+		if ( isset( $_POST['remotewp_remove_master_pw'] ) && '1' === $_POST['remotewp_remove_master_pw'] ) {
+			update_option( 'remotewp_master_password', '' );
+
+			// Clean up all unlock transients
+			global $wpdb;
+			$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_remotewp_unlocked_%' OR option_name LIKE '_transient_timeout_remotewp_unlocked_%'" );
+
+			$this->logger->log( 'MASTER_PW_REMOVED', '', 'Master password removed — lock screen disabled' );
+
+			wp_redirect( admin_url( 'admin.php?page=remotewp&tab=settings&master_pw_removed=1' ) );
+			exit;
+		}
+
+		$new_password = isset( $_POST['remotewp_master_pw'] ) ? trim( wp_unslash( $_POST['remotewp_master_pw'] ) ) : '';
+
+		// If empty and password already exists, keep current (no change)
+		if ( empty( $new_password ) && $this->has_master_password() ) {
+			wp_redirect( admin_url( 'admin.php?page=remotewp&tab=settings' ) );
+			exit;
+		}
+
+		// If empty and no password exists, do nothing
+		if ( empty( $new_password ) ) {
+			wp_redirect( admin_url( 'admin.php?page=remotewp&tab=settings' ) );
+			exit;
+		}
+
+		// Hash and save the new password
+		$hash = wp_hash_password( $new_password );
+		$was_set = $this->has_master_password();
+		update_option( 'remotewp_master_password', $hash );
+
+		// Invalidate all existing unlock sessions (force re-auth with new password)
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_remotewp_unlocked_%' OR option_name LIKE '_transient_timeout_remotewp_unlocked_%'" );
+
+		// Re-unlock current user immediately (they just set the password)
+		$user_id = get_current_user_id();
+		set_transient( 'remotewp_unlocked_' . $user_id, true, DAY_IN_SECONDS );
+
+		$action = $was_set ? 'MASTER_PW_UPDATED' : 'MASTER_PW_SET';
+		$this->logger->log( $action, '', ( $was_set ? 'Master password changed' : 'Master password set — lock screen enabled' ) );
+
+		$param = $was_set ? 'master_pw_updated' : 'master_pw_set';
+		wp_redirect( admin_url( 'admin.php?page=remotewp&tab=settings&' . $param . '=1' ) );
+		exit;
 	}
 }

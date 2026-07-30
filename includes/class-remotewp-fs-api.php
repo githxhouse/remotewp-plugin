@@ -49,7 +49,7 @@ class RemoteWP_FS_API {
 	 *
 	 * @var string
 	 */
-	private $namespace = 'remotewp/v1';
+	private $namespace = REMOTEWP_API_NAMESPACE;
 
 	/**
 	 * Constructor.
@@ -314,7 +314,7 @@ class RemoteWP_FS_API {
 		$content = file_get_contents( $skill_file );
 
 		// Replace dynamic placeholders
-		$api_base = rest_url( 'remotewp/v1/' );
+		$api_base = rest_url( REMOTEWP_API_NAMESPACE . '/' );
 		$tier     = defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ? 'pro' : 'free';
 
 		$content = str_replace(

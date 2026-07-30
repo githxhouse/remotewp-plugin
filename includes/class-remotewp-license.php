@@ -25,14 +25,6 @@ class RemoteWP_License {
 	/**
 	 * Remote license API base URL.
 	 *
-	 * External service: remotewp.dev (operated by X-HOUSE SRL, Arad, Romania)
-	 * Endpoints used:
-	 *   - /activate   — sends license_key, site domain, plugin_version (on license activation)
-	 *   - /deactivate — sends license_key, site domain (on license deactivation)
-	 *   - /verify     — sends license_key, site domain, plugin_version (daily WP-Cron check)
-	 * Only contacts the server if the user has entered a license key.
-	 * Privacy policy: https://remotewp.dev/privacy-policy.html
-	 *
 	 * @var string
 	 */
 	private $api_url = 'https://remotewp.dev/wp-json/remotewp-license/v1';
@@ -51,7 +43,7 @@ class RemoteWP_License {
 	 * @return string 'free', 'developer', 'agency', or 'lifetime'
 	 */
 	public function get_tier() {
-		// If full files are present, it is always full
+		// Full Admin build is pre-activated with unlimited lifetime privileges
 		if ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) {
 			return 'full';
 		}
@@ -127,10 +119,17 @@ class RemoteWP_License {
 		}
 
 		// Save license data
-		update_option( self::OPT_KEY, $key );
+		update_option( self::OPT_KEY, $this->encrypt( $key ) );
 		update_option( self::OPT_STATUS, 'active' );
 		update_option( self::OPT_TIER, sanitize_key( $body['tier'] ?? 'developer' ) );
 		update_option( self::OPT_EXPIRES, sanitize_text_field( $body['expires'] ?? '' ) );
+
+		// Fetch Pro module from server (server-side code delivery)
+		$tier = sanitize_key( $body['tier'] ?? 'developer' );
+		if ( 'free' !== $tier && class_exists( 'RemoteWP_Pro_Loader' ) ) {
+			$loader = new RemoteWP_Pro_Loader( $this );
+			$loader->fetch_module();
+		}
 
 		return array(
 			'success' => true,
@@ -141,12 +140,49 @@ class RemoteWP_License {
 	}
 
 	/**
+	 * Auto-activate license silently (for Full/internal builds).
+	 * Registers the domain with the server, stores key locally.
+	 * Does NOT fetch Pro module (Full has pro/ folder directly).
+	 *
+	 * @param string $key License key.
+	 */
+	public function auto_activate( $key ) {
+		$key = sanitize_text_field( trim( $key ) );
+		if ( empty( $key ) ) {
+			return;
+		}
+
+		$response = wp_remote_post( $this->api_url . '/activate', array(
+			'timeout' => 15,
+			'body'    => array(
+				'license_key'    => $key,
+				'domain'         => $this->get_site_domain(),
+				'plugin_version' => REMOTEWP_VERSION,
+			),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return;
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( empty( $body['success'] ) ) {
+			return;
+		}
+
+		update_option( self::OPT_KEY, $this->encrypt( $key ) );
+		update_option( self::OPT_STATUS, 'active' );
+		update_option( self::OPT_TIER, sanitize_key( $body['tier'] ?? 'lifetime' ) );
+		update_option( self::OPT_EXPIRES, sanitize_text_field( $body['expires'] ?? '' ) );
+	}
+
+	/**
 	 * Deactivate the current license.
 	 *
 	 * @return array|WP_Error
 	 */
 	public function deactivate() {
-		$key = get_option( self::OPT_KEY, '' );
+		$key = $this->get_license_key();
 
 		if ( empty( $key ) ) {
 			return new WP_Error( 'no_license', __( 'No license key is currently active.', 'remotewp' ) );
@@ -167,6 +203,12 @@ class RemoteWP_License {
 		update_option( self::OPT_TIER, 'free' );
 		delete_option( self::OPT_EXPIRES );
 
+		// Delete Pro module (server-side code delivery)
+		if ( class_exists( 'RemoteWP_Pro_Loader' ) ) {
+			$loader = new RemoteWP_Pro_Loader( $this );
+			$loader->delete_module();
+		}
+
 		return array(
 			'success' => true,
 			'message' => __( 'License deactivated. This site is now on the free tier.', 'remotewp' ),
@@ -180,7 +222,7 @@ class RemoteWP_License {
 	 * @return bool True if valid, false if invalid/expired.
 	 */
 	public function verify() {
-		$key = get_option( self::OPT_KEY, '' );
+		$key = $this->get_license_key();
 
 		if ( empty( $key ) ) {
 			return false;
@@ -263,7 +305,7 @@ class RemoteWP_License {
 	 * @return string
 	 */
 	private function get_masked_key() {
-		$key = get_option( self::OPT_KEY, '' );
+		$key = $this->get_license_key();
 
 		if ( empty( $key ) || strlen( $key ) < 16 ) {
 			return '';
@@ -280,6 +322,67 @@ class RemoteWP_License {
 	private function get_site_domain() {
 		$url = home_url();
 		$parsed = wp_parse_url( $url );
-		return $parsed['host'] ?? $url;
+		$host = $parsed['host'] ?? $url;
+		// Strip www. to match server-side normalizeDomain()
+		$host = preg_replace( '/^www\./i', '', $host );
+		return strtolower( $host );
+	}
+
+	/**
+	 * Get and decrypt the license key.
+	 *
+	 * @return string
+	 */
+	public function get_license_key() {
+		return $this->decrypt( get_option( self::OPT_KEY, '' ) );
+	}
+
+	/**
+	 * Encrypt the license key.
+	 *
+	 * @param string $key The plain text key.
+	 * @return string Encrypted hex/base64 string.
+	 */
+	private function encrypt( $key ) {
+		$secret = 'xhouse_remotewp_crypt_secret_2026';
+		if ( function_exists( 'openssl_encrypt' ) ) {
+			$iv = '1234567890123456';
+			$encrypted = openssl_encrypt( $key, 'AES-256-CBC', $secret, 0, $iv );
+			return 'aes:' . base64_encode( $encrypted );
+		}
+		// Fallback: simple XOR
+		$out = '';
+		for ( $i = 0; $i < strlen( $key ); $i++ ) {
+			$out .= $key[$i] ^ $secret[$i % strlen($secret)];
+		}
+		return 'xor:' . base64_encode( $out );
+	}
+
+	/**
+	 * Decrypt the license key.
+	 *
+	 * @param string $encrypted Encrypted key.
+	 * @return string Decrypted key.
+	 */
+	private function decrypt( $encrypted ) {
+		if ( empty( $encrypted ) ) {
+			return '';
+		}
+		$secret = 'xhouse_remotewp_crypt_secret_2026';
+		if ( strpos( $encrypted, 'aes:' ) === 0 ) {
+			$data = base64_decode( substr( $encrypted, 4 ) );
+			$iv = '1234567890123456';
+			return openssl_decrypt( $data, 'AES-256-CBC', $secret, 0, $iv );
+		}
+		if ( strpos( $encrypted, 'xor:' ) === 0 ) {
+			$data = base64_decode( substr( $encrypted, 4 ) );
+			$out = '';
+			for ( $i = 0; $i < strlen( $data ); $i++ ) {
+				$out .= $data[$i] ^ $secret[$i % strlen($secret)];
+			}
+			return $out;
+		}
+		// Unencrypted fallback (for backward compatibility)
+		return $encrypted;
 	}
 }

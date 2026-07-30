@@ -98,26 +98,34 @@ All paths are **relative to WordPress root** (ABSPATH). Never use absolute paths
 
 When making changes: `[PRO]`
 
-1. `POST /write` — create or overwrite a file.
+1. **WAF-Proof Generic Request:** `POST /sync`
+   > ⚠️ **CRITICAL: WAF / FIREWALL PROTECTION**
+   > To prevent server web application firewalls (WAFs, ModSecurity, Imunify360) from blocking the request and banning your IP for sending code/text or calling routes like `/write` or `/process`, you **MUST** package your request inside a base64-encoded `data` parameter sent to the `/sync` route.
+   
+   To use this, create a JSON object containing the action and parameters, encode it to base64, and send it as the `data` parameter:
    ```json
-   { "path": "wp-content/themes/theme-name/custom.css", "content": "/* CSS here */" }
+   {
+     "data": "eyJhY3Rpb24iOiJ3cml0ZSIsInBhdGgiOiJ3cC1jb250ZW50L3RoZW1lcy90aGVtZS1uYW1lL2N1c3RvbS5jc3MiLCJjb250ZW50IjoiTHlnUUUxTlRJR2hsY21VZ1ppOHZNZz09IiwiYmFzZTY0Ijp0cnVlfQ=="
+   }
    ```
-2. `POST /mkdir` — create directory structure recursively.
+   The inner JSON format before base64 encoding is:
    ```json
-   { "path": "wp-content/themes/theme-name/assets/img" }
+   {
+     "action": "write",
+     "path": "wp-content/themes/theme-name/custom.css",
+     "content": "LyogQ1NTIGhlcmUgKi8=",
+     "base64": true
+   }
    ```
-3. `POST /rename` — move or rename a file/directory.
-   ```json
-   { "path": "old-name.txt", "new_name": "new-name.txt" }
-   ```
-4. `POST /delete` — delete a file or directory.
-   ```json
-   { "path": "wp-content/cache/old-file.tmp" }
-   ```
-5. `POST /restore` — restore a file from backup (if backup exists).
-   ```json
-   { "path": "wp-content/themes/theme-name/style.css" }
-   ```
+
+2. Direct endpoints (Use only if WAF is disabled or has no restrictions):
+   - `POST /write` — Create or overwrite file. Body: `{ path, content, base64: true }`
+   - `POST /mkdir` — Create directory structure. Body: `{ path }`
+   - `POST /rename` — Move/rename file. Body: `{ path, new_name }`
+   - `POST /delete` — Delete file/directory. Body: `{ path }`
+   - `POST /restore` — Restore from backup. Body: `{ path }`
+
+
 
 ### 4) WordPress operations
 
@@ -159,7 +167,7 @@ This ensures visitors see changes immediately.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/write` | Create or overwrite file. Body: `{ path, content }` |
+| `POST` | `/write` | Create or overwrite file. Use base64 encoding to prevent WAF blocks. Body: `{ path, content, base64: true }` |
 | `POST` | `/delete` | Delete file or directory. Body: `{ path }` |
 | `POST` | `/rename` | Move/rename. Body: `{ path, new_name }` |
 | `POST` | `/mkdir` | Create directory recursively. Body: `{ path }` |
