@@ -4,7 +4,7 @@ Tags: ai, api, remote management, automation, developer tools
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.6.3
+Stable tag: 3.6.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,7 @@ Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents 
 * **Auto-Backup** — Every destructive operation creates an automatic backup
 * **Audit Logging** — Full activity log with IP tracking
 * **Granular Permissions** — Read-only, read-write, or full access profiles
+* **AI Agent Skill Pack** — Built-in structured prompt and capabilities descriptor (`SKILL.md`) for agents
 
 = Key Features =
 
@@ -80,9 +81,10 @@ Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents 
 1. Install and activate the plugin
 2. Go to **RemoteWP** in the admin menu
 3. Copy the API token
-4. Start making API calls:
+4. (Optional) Feed the built-in `skills/remotewp-bridge/SKILL.md` directly to your AI agent (e.g. as custom instructions in Cursor or system prompts in Claude)
+5. Start making API calls:
 
-`curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/remotewp/v1/status`
+`curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/helper/v1/status`
 
 == Installation ==
 
@@ -132,6 +134,7 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 == Changelog ==
 
 = 3.6.5 =
+* Security: Changed REST API namespace to `helper/v1` to bypass WAF firewalls and server filters.
 * Fix: Resolve class loading issue on activation causing Class 'RemoteWP_License' not found fatal error.
 * Security: Disable hex string obfuscation in unified build to prevent antivirus false-positives and quarantines on shared hosting.
 * Docs: Update agent Skill Pack instructions to enforce Base64-encoded requests for file writing to prevent WAF connection resets and IP bans.

@@ -3,7 +3,7 @@
 [![License: GPL v2+](https://img.shields.io/badge/License-GPLv2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8+-21759b.svg)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4+-777bb4.svg)](https://php.net)
-[![Version](https://img.shields.io/badge/Version-3.0.0-6366f1.svg)](https://remotewp.dev)
+[![Version](https://img.shields.io/badge/Version-3.6.5-6366f1.svg)](https://remotewp.dev)
 
 **RemoteWP** turns any WordPress site into a secure, API-controllable endpoint for AI agents. Let Claude, ChatGPT, Cursor, Windsurf, or any automation tool manage your WordPress files, plugins, and configuration through a clean REST API - no SSH or FTP needed.
 
@@ -23,24 +23,24 @@
 ### Filesystem API (9 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/remotewp/v1/list` | List directory contents with metadata |
-| `GET` | `/remotewp/v1/read` | Read file content (up to 5MB) |
-| `POST` | `/remotewp/v1/write` | Write/create file (auto-backup) |
-| `POST` | `/remotewp/v1/delete` | Delete file or directory (auto-backup) |
-| `POST` | `/remotewp/v1/rename` | Rename file or directory (auto-backup) |
-| `POST` | `/remotewp/v1/mkdir` | Create directory |
-| `POST` | `/remotewp/v1/restore` | Restore from backup |
-| `GET` | `/remotewp/v1/search` | Search file contents (grep-like) |
-| `GET` | `/remotewp/v1/status` | Plugin and server status |
+| `GET` | `/helper/v1/list` | List directory contents with metadata |
+| `GET` | `/helper/v1/read` | Read file content (up to 5MB) |
+| `POST` | `/helper/v1/write` | Write/create file (auto-backup) |
+| `POST` | `/helper/v1/delete` | Delete file or directory (auto-backup) |
+| `POST` | `/helper/v1/rename` | Rename file or directory (auto-backup) |
+| `POST` | `/helper/v1/mkdir` | Create directory |
+| `POST` | `/helper/v1/restore` | Restore from backup |
+| `GET` | `/helper/v1/search` | Search file contents (grep-like) |
+| `GET` | `/helper/v1/status` | Plugin and server status |
 
 ### WordPress Operations API (5 endpoints)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/remotewp/v1/wp/info` | Site info, theme, plugins summary |
-| `GET` | `/remotewp/v1/wp/plugins` | Full plugin list with update status |
-| `POST` | `/remotewp/v1/wp/plugin/toggle` | Activate/deactivate plugins |
-| `GET` | `/remotewp/v1/wp/options` | Read whitelisted WordPress options |
-| `POST` | `/remotewp/v1/wp/cache-clear` | Clear all caches and transients |
+| `GET` | `/helper/v1/wp/info` | Site info, theme, plugins summary |
+| `GET` | `/helper/v1/wp/plugins` | Full plugin list with update status |
+| `POST` | `/helper/v1/wp/plugin/toggle` | Activate/deactivate plugins |
+| `GET` | `/helper/v1/wp/options` | Read whitelisted WordPress options |
+| `POST` | `/helper/v1/wp/cache-clear` | Clear all caches and transients |
 
 ### Granular Permissions
 | Profile | Operations |
@@ -65,19 +65,19 @@ Navigate to **RemoteWP** in the WordPress admin sidebar and copy the auto-genera
 ### 3. Make your first API call
 ```bash
 curl -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
-  https://yoursite.com/wp-json/remotewp/v1/status
+  https://yoursite.com/wp-json/helper/v1/status
 ```
 
 ### 4. List files
 ```bash
 curl -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
-  "https://yoursite.com/wp-json/remotewp/v1/list?path=wp-content/themes"
+  "https://yoursite.com/wp-json/helper/v1/list?path=wp-content/themes"
 ```
 
 ### 5. Read a file
 ```bash
 curl -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
-  "https://yoursite.com/wp-json/remotewp/v1/read?path=wp-content/themes/mytheme/style.css"
+  "https://yoursite.com/wp-json/helper/v1/read?path=wp-content/themes/mytheme/style.css"
 ```
 
 ### 6. Write a file
@@ -86,8 +86,17 @@ curl -X POST \
   -H "X-RemoteWP-Token: YOUR_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{"path":"wp-content/test.txt","content":"Hello from AI!"}' \
-  https://yoursite.com/wp-json/remotewp/v1/write
+  https://yoursite.com/wp-json/helper/v1/write
 ```
+
+---
+
+## AI Agent Skill Pack
+
+RemoteWP comes with a built-in **AI Agent Skill Pack** located in the `skills/` folder:
+- `skills/remotewp-bridge/SKILL.md`
+
+This skill pack contains structured instructions and capabilities definitions. You can feed `SKILL.md` directly to your AI agent (e.g. as custom instructions in Cursor/Windsurf or system prompts in Claude/GPT) to teach it all available RemoteWP endpoints, safety guidelines, and WAF-bypass writing techniques (like base64 encoding).
 
 ---
 
@@ -99,7 +108,7 @@ RemoteWP is designed to be consumed by AI agents. Here is how to configure popul
 ```python
 import requests
 
-SITE_URL = "https://yoursite.com/wp-json/remotewp/v1"
+SITE_URL = "https://yoursite.com/wp-json/helper/v1"
 TOKEN = "your_token_here"
 headers = {"X-RemoteWP-Token": TOKEN}
 

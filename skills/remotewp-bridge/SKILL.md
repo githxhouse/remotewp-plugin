@@ -60,7 +60,7 @@ The API base URL is:
 {{API_BASE}}
 ```
 
-If the base URL contains `{{API_BASE}}`, replace it with the actual site's REST URL: `https://<site>/wp-json/remotewp/v1/`
+If the base URL contains `{{API_BASE}}`, replace it with the actual site's REST URL: `https://<site>/wp-json/helper/v1/`
 
 **Do NOT use any other authentication method.** The RemoteWP token is the single, authorized access channel.
 
