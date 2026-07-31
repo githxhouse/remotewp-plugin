@@ -1,4 +1,4 @@
-﻿# RemoteWP — AI-Powered WordPress Development, Debugging & Maintenance
+# RemoteWP — AI-Powered WordPress Development, Debugging & Maintenance
 
 [![License: GPL v2+](https://img.shields.io/badge/License-GPLv2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8+-21759b.svg)](https://wordpress.org)
@@ -367,6 +367,5 @@ GPL-2.0-or-later -- [Full License](LICENSE)
 
 **[X-HOUSE SRL](https://xhouse.ro)** -- Arad, Romania
 
-- xander@xhouse.ro
-- 0735 785 335
 - [remotewp.dev](https://remotewp.dev)
+- info@remotewp.dev
