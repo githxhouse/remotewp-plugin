@@ -1,6 +1,6 @@
-=== RemoteWP ===
+﻿=== RemoteWP ===
 Contributors: xhouse
-Tags: ai, api, remote management, automation, developer tools
+Tags: ai, api, remote management, wordpress development, developer tools, debugging, seo, woocommerce, automation
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
@@ -8,56 +8,114 @@ Stable tag: 3.6.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
+Securely connect compatible AI agents to your WordPress site through a controlled REST API for development, debugging, SEO, WooCommerce and maintenance.
 
 == Description ==
 
-**RemoteWP** turns your WordPress site into a secure, API-controllable endpoint that AI agents can manage remotely. Whether you use Claude, ChatGPT, Cursor, Windsurf, or any custom automation — RemoteWP gives them direct access to your site's filesystem and WordPress operations through a clean REST API.
+**RemoteWP securely connects compatible AI agents to a real WordPress website through a controlled REST API.**
 
-= Why RemoteWP? =
+It allows configured AI agents to inspect approved WordPress files, search themes and plugins, identify problems and perform supported operations for design, debugging, SEO, performance optimization, development, WooCommerce and ongoing maintenance.
 
-Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents and automation tools can't use these easily. RemoteWP solves this by providing:
+RemoteWP reduces the need to share FTP, SSH or hosting-panel credentials while keeping access restricted through authentication, permission profiles, protected paths, backups, rate limiting, IP controls and activity logs.
 
-* **Secure REST API** — Token-based authentication over HTTPS
-* **Filesystem Operations** — Read, write, delete, rename, search files
-* **WordPress Operations** — Site info, plugin management, cache clearing
-* **Auto-Backup** — Every destructive operation creates an automatic backup
-* **Audit Logging** — Full activity log with IP tracking
-* **Granular Permissions** — Read-only, read-write, or full access profiles
-* **AI Agent Skill Pack** — Built-in structured prompt and capabilities descriptor (`SKILL.md`) for agents
+> RemoteWP provides the WordPress connection and supported API operations. The quality and scope of the analysis also depend on the tools and capabilities available to the connected AI agent.
+
+= What RemoteWP Can Help With =
+
+**Design & Layout**
+
+* Inspect approved theme templates and stylesheets
+* Search for CSS related to visual problems
+* Investigate responsive layout issues
+* Modify approved frontend files
+* Assist with WooCommerce template and layout changes
+
+Visual confirmation may require browser access or another rendering tool available to the connected AI agent.
+
+**WordPress Debugging**
+
+* Search approved theme and plugin files
+* Investigate PHP, JavaScript and CSS problems
+* Locate functions related to WordPress errors
+* Analyze likely plugin or theme conflicts
+* Apply controlled fixes with automatic backups
+
+**SEO**
+
+* Inspect templates affecting headings and metadata
+* Review canonical and schema implementations
+* Search for duplicated or hardcoded SEO elements
+* Investigate technical SEO issues in themes and plugins
+
+RemoteWP does not replace a crawler, analytics platform or complete SEO suite.
+
+**Performance**
+
+* Search scripts and styles loaded by themes and plugins
+* Inspect inefficient or repetitive code
+* Investigate cache and transient-related problems
+* Clear supported WordPress caches and transients
+
+Core Web Vitals analysis requires browser or field-performance data that RemoteWP does not provide by itself.
+
+**Development & WooCommerce**
+
+* Inspect and modify approved theme and plugin files
+* Work with hooks, filters, templates and shortcodes
+* Create files and directories when permissions allow
+* Assist with WooCommerce customizations
+* Apply approved code modifications
+
+**Maintenance**
+
+* Inspect installed plugins and available update information
+* Activate or deactivate plugins when permitted
+* Review supported WordPress configuration values
+* Clear caches and transients
+* Standardize recurring work across client websites
 
 = Key Features =
 
 **Security First**
 
-* Token-based authentication (64-character secure tokens)
-* HTTPS enforcement (no plaintext API calls)
+* Token-based authentication (64-character cryptographic tokens)
+* HTTPS enforcement (bypassed on localhost only)
 * IP whitelist with CIDR notation support
-* Rate limiting (configurable requests per minute)
-* Brute force lockout (auto-blocks after failed attempts)
-* Protected files (wp-config.php, .env, .htaccess cannot be accessed)
-* Path restrictions (limit access to specific directories)
-* Directory traversal prevention
+* Rate limiting -- configurable requests per minute (default: 60/min)
+* Brute force lockout -- auto-blocks after failed authentication attempts
+* Protected files: wp-config.php, .env, .htaccess and others cannot be accessed
+* Path restrictions: limit access to specific directories
+* Write operations restricted to wp-content/
+* All dot-files and dot-directories blocked recursively
+* Dangerous extensions (.php, .sh, .py, .exe etc.) blocked by default
 
-**Filesystem API**
+**Filesystem API (Free)**
 
-* `GET /list` — List directory contents with metadata
-* `GET /read` — Read file content (up to 5MB)
-* `POST /write` — Create or update files (with auto-backup)
-* `POST /delete` — Delete files or empty directories (with auto-backup)
-* `POST /rename` — Rename files or directories (with auto-backup)
-* `POST /mkdir` — Create new directories
-* `POST /restore` — Restore from automatic backup
-* `GET /search` — Search file contents (grep-like)
-* `GET /status` — Plugin and server status
+* GET /status -- Plugin and server status, permission level
+* GET /list -- List directory contents with metadata
+* GET /read -- Read file content (up to 5MB)
+* GET /skill -- AI Agent Skill Pack with site variables pre-filled
+* GET /instructions -- Legacy AI instructions
+* GET /wp/info -- Basic site information
 
-**WordPress Operations API**
+**Filesystem API (Pro)**
 
-* `GET /wp/info` — Comprehensive site information
-* `GET /wp/plugins` — Full plugin list with update status
-* `POST /wp/plugin/toggle` — Activate or deactivate plugins
-* `GET /wp/options` — Read whitelisted WordPress options
-* `POST /wp/cache-clear` — Clear all caches (supports WP Super Cache, W3TC, WP Rocket, LiteSpeed)
+* POST /write -- Create or update files (with auto-backup)
+* POST /delete -- Delete files or directories (with auto-backup)
+* POST /rename -- Rename files or directories (with auto-backup)
+* POST /mkdir -- Create new directories
+* POST /restore -- Restore from automatic backup
+* GET /search -- Search file contents (grep-like)
+* POST /sync -- WAF-compatible base64-encoded request dispatcher
+* POST /process -- Alias for /sync
+
+**WordPress Operations API (Pro)**
+
+* GET /wp/info -- Full site information: theme, plugins summary, WP version
+* GET /wp/plugins -- Full plugin list with update status
+* POST /wp/plugin/toggle -- Activate or deactivate plugins
+* GET /wp/options -- Read whitelisted WordPress options
+* POST /wp/cache-clear -- Clear all caches (WP Super Cache, W3TC, WP Rocket, LiteSpeed)
 
 **Modern Admin Dashboard**
 
@@ -70,21 +128,25 @@ Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents 
 
 = Use Cases =
 
-1. **AI-Powered Site Management** — Let Claude, GPT, or Cursor manage theme files, fix bugs, and optimize code
-2. **Automated Deployments** — Push code changes via API from CI/CD pipelines
-3. **Remote Auditing** — Scan files for malware, check plugin versions, audit configurations
-4. **Multi-Site Management** — Manage multiple WordPress sites from a central system
-5. **Backup Automation** — Automated file backup and restore workflows
+1. **AI-Assisted WordPress Work** -- Design, debugging, SEO, development and maintenance through compatible AI agents
+2. **Agency & Multi-Site Management** -- Apply the same controlled workflow across multiple client websites
+3. **WooCommerce Support** -- Investigate templates, checkout issues and WooCommerce customizations
+4. **Performance & SEO Investigation** -- Review code, templates and technical SEO issues in approved files
+5. **Controlled Code Modifications** -- Read, review and apply changes with automatic backups and activity logging
 
 = Quick Start =
 
 1. Install and activate the plugin
 2. Go to **RemoteWP** in the admin menu
-3. Copy the API token
-4. (Optional) Feed the built-in `skills/remotewp-bridge/SKILL.md` directly to your AI agent (e.g. as custom instructions in Cursor or system prompts in Claude)
+3. Copy the API token and endpoint
+4. Retrieve the AI Agent Skill Pack from `/wp-json/helper/v1/skill` and paste it into your AI agent
 5. Start making API calls:
 
 `curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/helper/v1/status`
+
+= Limitations =
+
+RemoteWP provides controlled access to supported WordPress files and operations. It does not guarantee that an AI-generated recommendation or code modification is correct. Visual inspection, browser testing, analytics and external SEO data may require additional tools. You remain responsible for configuring permissions and reviewing sensitive operations.
 
 == Installation ==
 
@@ -92,44 +154,44 @@ Traditional WordPress management requires SSH, FTP, or cPanel access. AI agents 
 2. Activate the plugin through the 'Plugins' menu
 3. Navigate to **RemoteWP** in the admin sidebar
 4. Copy the auto-generated API token
-5. Configure permissions, rate limits, and IP whitelist as needed
+5. Configure permissions, rate limits and IP whitelist as needed
 
 == Frequently Asked Questions ==
 
 = Is RemoteWP secure? =
 
-Yes. RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate limiting, IP whitelisting, brute force protection, and sandboxes all operations within your WordPress directory. Sensitive files like wp-config.php are always protected.
+RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate limiting, IP whitelisting, brute force protection, path sandboxing and write restrictions. Sensitive files like wp-config.php are always protected. You remain responsible for configuring permissions appropriately.
 
 = Can I limit what the API can do? =
 
 Yes. RemoteWP offers three permission profiles:
-- **Read Only** — Only list and read operations
-- **Read & Write** — Read plus write and create
-- **Full Access** — All operations including delete and plugin management
+- **Read Only** -- Only list, read, search and WordPress info operations
+- **Read & Write** -- Read plus write and create operations
+- **Full Access** -- All operations including delete and plugin management
 
 You can also restrict access to specific directories using path restrictions.
 
+= Which AI agents can I use? =
+
+Any AI agent or automation tool capable of making authenticated HTTP requests with custom headers. The exact integration method depends on the platform. Claude, ChatGPT, Cursor, Windsurf, Codex, Gemini and custom agents can all work with RemoteWP when configured with the appropriate tool or script.
+
 = Does it work with my caching plugin? =
 
-The cache-clear endpoint supports WP Super Cache, W3 Total Cache, WP Rocket, LiteSpeed Cache, and WordPress's built-in object cache.
+The cache-clear endpoint supports WP Super Cache, W3 Total Cache, WP Rocket, LiteSpeed Cache and WordPress built-in object cache.
 
 = What happens if something goes wrong? =
 
-Every write, delete, and rename operation automatically creates a backup of the affected file. You can restore any file through the API or manually from the backup directory.
-
-= Can I use it with multiple AI tools? =
-
-Yes! The API is tool-agnostic. Any HTTP client, AI agent, or automation tool that can send REST requests with headers can use RemoteWP.
+Every write, delete and rename operation automatically creates a timestamped backup. You can restore any file through the API or from the backup directory.
 
 = Where are backups stored? =
 
-Backups are stored in a randomized directory inside `wp-content/uploads/`. The directory is protected from web access via .htaccess, index.php, and a non-guessable folder name for compatibility with Nginx and LiteSpeed.
+Backups are stored in a randomized directory inside `wp-content/uploads/`. The directory is protected from web access via .htaccess, index.php and a non-guessable folder name for compatibility with Nginx and LiteSpeed.
 
 == Screenshots ==
 
-1. Dashboard — Token management and connection info
-2. Activity Log — Filterable audit log viewer
-3. Settings — Permissions, rate limiting, and IP whitelist
+1. Dashboard -- Token management and connection info
+2. Activity Log -- Filterable audit log viewer
+3. Settings -- Permissions, rate limiting and IP whitelist
 
 == Changelog ==
 
@@ -183,7 +245,7 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Changed auth header to `X-RemoteWP-Token`
 
 = 2.0.0 =
-* Internal release — class-based architecture
+* Internal release -- class-based architecture
 * Token authentication
 * Basic filesystem CRUD
 

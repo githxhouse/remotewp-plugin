@@ -89,6 +89,10 @@ Choose the Free plan or purchase a paid license, then download the RemoteWP plug
 
 Upload the plugin through the WordPress dashboard and activate it like any standard WordPress plugin.
 
+```
+Plugins -> Add New -> Upload Plugin -> Activate RemoteWP
+```
+
 ### 3. Copy the Connection Instructions
 
 Open the RemoteWP settings page and copy the endpoint, authentication token, permission profile and connection instructions.
@@ -112,23 +116,23 @@ Paste the connection instructions into Claude, ChatGPT, Cursor, Codex, Gemini, W
 ## Key Features
 
 ### Security First
-- **Token Authentication** — 64-character cryptographic tokens via `X-RemoteWP-Token` header
-- **HTTPS Enforcement** — All API calls require SSL (except localhost)
-- **Rate Limiting** — Configurable requests per minute (default: 60/min per IP)
-- **IP Whitelist** — Optional IP restriction with CIDR notation support
-- **Brute Force Protection** — Auto-lockout after configurable failed auth attempts (default: 5 attempts, 15 min lockout)
-- **Path Sandboxing** — All operations restricted to WordPress ABSPATH
-- **Protected Files** — `wp-config.php`, `.env*`, `.htaccess`, `.htpasswd`, `.user.ini`, `php.ini`, `web.config` always blocked
-- **Hidden Directory Block** — All dot-files and dot-directories blocked recursively
-- **Write Restriction** — Write operations restricted to `wp-content/`
-- **Auto-Backup** — Every write/delete/rename creates a timestamped backup
-- **Audit Logging** — JSON activity log (500 entries, auto-rotated) with IP, action, path, timestamp
+- **Token Authentication** -- 64-character cryptographic tokens via `X-RemoteWP-Token` header
+- **HTTPS Enforcement** -- All API calls require SSL (except localhost)
+- **Rate Limiting** -- Configurable requests per minute (default: 60/min per IP)
+- **IP Whitelist** -- Optional IP restriction with CIDR notation support
+- **Brute Force Protection** -- Auto-lockout after configurable failed auth attempts (default: 5 attempts, 15 min lockout)
+- **Path Sandboxing** -- All operations restricted to WordPress ABSPATH
+- **Protected Files** -- `wp-config.php`, `.env*`, `.htaccess`, `.htpasswd`, `.user.ini`, `php.ini`, `web.config` always blocked
+- **Hidden Directory Block** -- All dot-files and dot-directories blocked recursively
+- **Write Restriction** -- Write operations restricted to `wp-content/`
+- **Auto-Backup** -- Every write/delete/rename creates a timestamped backup
+- **Audit Logging** -- JSON activity log (500 entries, auto-rotated) with IP, action, path, timestamp
 
 ---
 
 ## How It Works
 
-```text
+```
 AI Agent
     |
     | Authenticated HTTP request (X-RemoteWP-Token)
@@ -158,8 +162,8 @@ Supported WordPress files and operations
 
 ## Security
 
-- **Token Generation**: `bin2hex(random_bytes(32))` — 64 hex characters
-- **Token Comparison**: `hash_equals()` — timing-safe
+- **Token Generation**: `bin2hex(random_bytes(32))` -- 64 hex characters
+- **Token Comparison**: `hash_equals()` -- timing-safe
 - **Token TTL**: Configurable (default: `0` = never expires)
 - **Path Validation**: `realpath()` + `strpos()` check against ABSPATH
 - **Write Restriction**: Filesystem write operations restricted to `wp-content/`
@@ -189,7 +193,7 @@ Default at activation: **Full Access**. Configure in the RemoteWP admin dashboar
 ### Free Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|--------------|
+|--------|----------|-------------|
 | `GET` | `/helper/v1/status` | Plugin status, permission level, PHP/WP versions |
 | `GET` | `/helper/v1/list` | List directory contents with metadata |
 | `GET` | `/helper/v1/read` | Read file content (up to 5MB) |
@@ -197,10 +201,10 @@ Default at activation: **Full Access**. Configure in the RemoteWP admin dashboar
 | `GET` | `/helper/v1/instructions` | Legacy AI instructions |
 | `GET` | `/helper/v1/wp/info` | Basic site info (theme, WP version) |
 
-### Pro Endpoints — Filesystem
+### Pro Endpoints -- Filesystem
 
 | Method | Endpoint | Description |
-|--------|----------|--------------|
+|--------|----------|-------------|
 | `POST` | `/helper/v1/write` | Write/create file with auto-backup |
 | `POST` | `/helper/v1/delete` | Delete file or directory with auto-backup |
 | `POST` | `/helper/v1/rename` | Rename file or directory with auto-backup |
@@ -210,10 +214,10 @@ Default at activation: **Full Access**. Configure in the RemoteWP admin dashboar
 | `POST` | `/helper/v1/sync` | WAF-compatible base64-encoded request dispatcher |
 | `POST` | `/helper/v1/process` | Alias for `/sync` |
 
-### Pro Endpoints — WordPress Operations
+### Pro Endpoints -- WordPress Operations
 
 | Method | Endpoint | Description |
-|--------|----------|--------------|
+|--------|----------|-------------|
 | `GET` | `/helper/v1/wp/info` | Full site info: theme, plugins summary, WP version, multisite |
 | `GET` | `/helper/v1/wp/plugins` | Full plugin list with activation status |
 | `POST` | `/helper/v1/wp/plugin/toggle` | Activate or deactivate plugins |
@@ -275,10 +279,10 @@ RemoteWP can be used with AI agents and automation tools that support authentica
 
 The exact integration method depends on the AI platform:
 
-- **Claude** — may require an HTTP-capable tool or integration configured with the RemoteWP endpoint and token
-- **ChatGPT** — may require a compatible action, connector or external tool
-- **Cursor and Windsurf** — may use scripts, terminal tools or configured agent instructions
-- **Custom agents** — can call the REST API directly using any HTTP client
+- **Claude** -- may require an HTTP-capable tool or integration configured with the RemoteWP endpoint and token
+- **ChatGPT** -- may require a compatible action, connector or external tool
+- **Cursor and Windsurf** -- may use scripts, terminal tools or configured agent instructions
+- **Custom agents** -- can call the REST API directly using any HTTP client
 
 RemoteWP does not include a native plugin or connector for any specific AI platform.
 
@@ -303,29 +307,29 @@ Feed the returned content to your AI agent as a system prompt or custom instruct
 
 ```text
 remotewp/
-├── remotewp.php                          # Main plugin loader, constants, activation, cron
-├── uninstall.php                         # Clean uninstall
-├── readme.txt                            # WordPress.org standard readme
-├── includes/
-│   ├── class-remotewp-auth.php           # Token auth + HTTPS enforcement + IP whitelist
-│   ├── class-remotewp-rate-limiter.php   # Per-IP rate limiting + brute force lockout
-│   ├── class-remotewp-permissions.php    # Permission profiles + path security + protected files
-│   ├── class-remotewp-fs-api.php         # Free filesystem REST endpoints
-│   ├── class-remotewp-license.php        # License management + tier gating
-│   ├── class-remotewp-logger.php         # Audit logging (JSON, 500 entries) + auto-backup
-│   ├── class-remotewp-admin.php          # Admin dashboard
-│   ├── class-remotewp-pro-loader.php     # Pro module loader
-│   └── class-remotewp-updater.php        # Auto-updater
-├── pro/
-│   ├── class-remotewp-fs-api-pro.php     # Pro filesystem endpoints
-│   ├── class-remotewp-wp-api.php         # Pro WordPress operations endpoints
-│   └── class-remotewp-admin-pro.php      # Pro admin enhancements
-├── skills/
-│   └── remotewp-bridge/
-│       └── SKILL.md                      # AI Agent Skill Pack
-└── admin/
-    ├── css/admin.css
-    └── js/admin.js
+|-- remotewp.php                          # Main plugin loader, constants, activation, cron
+|-- uninstall.php                         # Clean uninstall
+|-- readme.txt                            # WordPress.org standard readme
+|-- includes/
+|   |-- class-remotewp-auth.php           # Token auth + HTTPS enforcement + IP whitelist
+|   |-- class-remotewp-rate-limiter.php   # Per-IP rate limiting + brute force lockout
+|   |-- class-remotewp-permissions.php    # Permission profiles + path security + protected files
+|   |-- class-remotewp-fs-api.php         # Free filesystem REST endpoints
+|   |-- class-remotewp-license.php        # License management + tier gating
+|   |-- class-remotewp-logger.php         # Audit logging (JSON, 500 entries) + auto-backup
+|   |-- class-remotewp-admin.php          # Admin dashboard
+|   |-- class-remotewp-pro-loader.php     # Pro module loader
+|   `-- class-remotewp-updater.php        # Auto-updater
+|-- pro/
+|   |-- class-remotewp-fs-api-pro.php     # Pro filesystem endpoints
+|   |-- class-remotewp-wp-api.php         # Pro WordPress operations endpoints
+|   `-- class-remotewp-admin-pro.php      # Pro admin enhancements
+|-- skills/
+|   `-- remotewp-bridge/
+|       `-- SKILL.md                      # AI Agent Skill Pack
+`-- admin/
+    |-- css/admin.css
+    `-- js/admin.js
 ```
 
 ---
@@ -355,13 +359,13 @@ Visual inspection, browser testing, database analysis, analytics, external SEO d
 
 ## License
 
-GPL-2.0-or-later — [Full License](LICENSE)
+GPL-2.0-or-later -- [Full License](LICENSE)
 
 ---
 
 ## Built By
 
-**[X-HOUSE SRL](https://xhouse.ro)** — Arad, Romania
+**[X-HOUSE SRL](https://xhouse.ro)** -- Arad, Romania
 
 - xander@xhouse.ro
 - 0735 785 335
