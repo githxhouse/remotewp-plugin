@@ -79,8 +79,10 @@ class RemoteWP_Auth {
 		$expected_token = get_option( 'remotewp_api_token' );
 
 		if ( empty( $provided_token ) ) {
-			$this->rate_limiter->record_failure( $ip );
-			$this->logger->log( 'AUTH_FAIL', '', 'Missing token header', 'error' );
+			// NOTE: Do NOT record_failure for missing token.
+			// Missing token = unauthenticated client (e.g. browser, read_url_content).
+			// Brute-force lockout must only trigger for wrong token guesses.
+			$this->logger->log( 'AUTH_FAIL', '', 'Missing token header', 'warning' );
 			return new WP_Error(
 				'unauthorized',
 				__( 'Missing authentication token. Send it via the X-RemoteWP-Token header.', 'remotewp' ),
