@@ -79,7 +79,6 @@ class RemoteWP_FS_API {
 			array( '/read',         'GET', 'read_file' ),
 			array( '/status',       'GET', 'get_status' ),
 			array( '/instructions', 'GET', 'get_instructions' ),
-			array( '/skill',        'GET', 'get_skill' ),
 		);
 
 		foreach ( $routes as $route ) {
@@ -93,6 +92,18 @@ class RemoteWP_FS_API {
 				)
 			);
 		}
+
+		// /skill is public — SKILL.md contains no secrets (token is already in the prompt).
+		// Making it public prevents IP lockouts when the AI agent reads it on first connect.
+		register_rest_route(
+			$this->namespace,
+			'/skill',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_skill' ),
+				'permission_callback' => '__return_true',
+			)
+		);
 
 		// Basic wp/info is free (only if Pro WP API is not loaded)
 		if ( ! defined( 'REMOTEWP_IS_PRO' ) || ! REMOTEWP_IS_PRO ) {
