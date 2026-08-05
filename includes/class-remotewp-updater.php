@@ -68,10 +68,7 @@ class RemoteWP_Updater {
 			? REMOTEWP_PLUGIN_BASENAME
 			: 'remotewp/remotewp.php';
 
-		// Only register hooks if Pro files are present
-		if ( ! defined( 'REMOTEWP_IS_PRO' ) || ! REMOTEWP_IS_PRO ) {
-			return;
-		}
+		// Check for updates (always registered for both Free and Pro)
 
 		// Check for updates
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
@@ -102,12 +99,10 @@ class RemoteWP_Updater {
 			return $transient;
 		}
 
-		// Get license info
+		// Get license info (fallback to internal key for FULL builds)
 		$license_key = get_option( 'remotewp_license_key', '' );
-		$license_status = get_option( 'remotewp_license_status', 'inactive' );
-
-		if ( empty( $license_key ) || 'active' !== $license_status ) {
-			return $transient;
+		if ( empty( $license_key ) && function_exists( 'remotewp_decode_internal_key' ) ) {
+			$license_key = remotewp_decode_internal_key();
 		}
 
 		// Check cache first (bypass if forced update check)

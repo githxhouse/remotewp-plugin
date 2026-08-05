@@ -1514,47 +1514,47 @@ class RemoteWP_Admin {
 			<!-- Upgrade Grid Premium -->
 			<div class="rwp-pricing-container">
 				<div class="rwp-pricing-header">
-					<h3><?php esc_html_e( 'Alege planul RemoteWP PRO potrivit pentru afacerea ta', 'remotewp' ); ?></h3>
-					<p><?php esc_html_e( 'Deblochează accesul complet la toate funcțiile avansate și oferă-i AI-ului tău putere deplină de scriere, editare, optimizare WooCommerce și SEO.', 'remotewp' ); ?></p>
+					<h3><?php esc_html_e( 'Choose the RemoteWP PRO plan right for your business', 'remotewp' ); ?></h3>
+					<p><?php esc_html_e( 'Unlock full access to all advanced features and empower your AI agent with complete read, write, WooCommerce, and SEO optimization capabilities.', 'remotewp' ); ?></p>
 				</div>
 				<div class="rwp-pricing-grid">
 					<!-- Developer Plan -->
 					<div class="rwp-pricing-card">
 						<div class="rwp-pcard-header">
 							<h4 class="rwp-pcard-title"><?php esc_html_e( 'DEVELOPER', 'remotewp' ); ?></h4>
-							<div class="rwp-pcard-price"><strong>$79</strong><span>/ <?php esc_html_e( 'an', 'remotewp' ); ?></span></div>
-							<span class="rwp-pcard-limits"><?php esc_html_e( 'Până la 10 site-uri WordPress', 'remotewp' ); ?></span>
+							<div class="rwp-pcard-price"><strong>$79</strong><span>/ <?php esc_html_e( 'year', 'remotewp' ); ?></span></div>
+							<span class="rwp-pcard-limits"><?php esc_html_e( 'Up to 10 WordPress sites', 'remotewp' ); ?></span>
 						</div>
 						<div class="rwp-pcard-body">
 							<ul class="rwp-pcard-features">
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Toate endpoint-urile PRO deblocate', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Scriere & editare fișiere nelimitate', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Suport tehnic prioritar 12 luni', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Actualizări de securitate incluse', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'All PRO endpoints unlocked', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Unlimited file read & write', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( '12 months priority support', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Security updates included', 'remotewp' ); ?></li>
 							</ul>
-							<a href="https://remotewp.dev/pricing?plan=developer" target="_blank" class="button button-secondary rwp-pcard-btn">
-								<?php esc_html_e( 'Cumpără Acum', 'remotewp' ); ?>
+							<a href="https://buy.stripe.com/dRmbJ29ZR0oFbfvcK4dIA00" target="_blank" class="button button-secondary rwp-pcard-btn">
+								<?php esc_html_e( 'Buy Now', 'remotewp' ); ?>
 							</a>
 						</div>
 					</div>
 
 					<!-- Agency Plan -->
 					<div class="rwp-pricing-card rwp-pricing-featured">
-						<div class="rwp-pcard-featured-badge"><?php esc_html_e( 'RECOMANDAT', 'remotewp' ); ?></div>
+						<div class="rwp-pcard-featured-badge"><?php esc_html_e( 'RECOMMENDED', 'remotewp' ); ?></div>
 						<div class="rwp-pcard-header">
 							<h4 class="rwp-pcard-title"><?php esc_html_e( 'AGENCY', 'remotewp' ); ?></h4>
-							<div class="rwp-pcard-price"><strong>$149</strong><span>/ <?php esc_html_e( 'an', 'remotewp' ); ?></span></div>
-							<span class="rwp-pcard-limits"><?php esc_html_e( 'Site-uri WordPress NELIMITATE', 'remotewp' ); ?></span>
+							<div class="rwp-pcard-price"><strong>$149</strong><span>/ <?php esc_html_e( 'year', 'remotewp' ); ?></span></div>
+							<span class="rwp-pcard-limits"><?php esc_html_e( 'UNLIMITED WordPress sites', 'remotewp' ); ?></span>
 						</div>
 						<div class="rwp-pcard-body">
 							<ul class="rwp-pcard-features">
-								<li><span class="dashicons dashicons-yes"></span> <strong><?php esc_html_e( 'Număr nelimitat de domenii', 'remotewp' ); ?></strong></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Acces complet API & AI bridge', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Suport Premium instant 24/7', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Ideal pentru agenții & deținători portofolii', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <strong><?php esc_html_e( 'Unlimited number of domains', 'remotewp' ); ?></strong></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Full API & AI bridge access', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( '24/7 Premium support', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Ideal for agencies & portfolio owners', 'remotewp' ); ?></li>
 							</ul>
-							<a href="https://remotewp.dev/pricing?plan=agency" target="_blank" class="button button-primary rwp-pcard-btn">
-								<?php esc_html_e( 'Cumpără Acum', 'remotewp' ); ?>
+							<a href="https://buy.stripe.com/bJecN6b3V8Vb5VbcK4dIA01" target="_blank" class="button button-primary rwp-pcard-btn">
+								<?php esc_html_e( 'Buy Now', 'remotewp' ); ?>
 							</a>
 						</div>
 					</div>
@@ -1563,18 +1563,18 @@ class RemoteWP_Admin {
 					<div class="rwp-pricing-card">
 						<div class="rwp-pcard-header">
 							<h4 class="rwp-pcard-title"><?php esc_html_e( 'LIFETIME', 'remotewp' ); ?></h4>
-							<div class="rwp-pcard-price"><strong>$349</strong><span>/ <?php esc_html_e( 'plată unică', 'remotewp' ); ?></span></div>
-							<span class="rwp-pcard-limits"><?php esc_html_e( 'Nelimitat pe viață, fără abonamente', 'remotewp' ); ?></span>
+							<div class="rwp-pcard-price"><strong>$349</strong><span>/ <?php esc_html_e( 'one-time payment', 'remotewp' ); ?></span></div>
+							<span class="rwp-pcard-limits"><?php esc_html_e( 'Lifetime unlimited, no subscription', 'remotewp' ); ?></span>
 						</div>
 						<div class="rwp-pcard-body">
 							<ul class="rwp-pcard-features">
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Acces pe viață fără abonament', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Actualizări incluse pe viață', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Suport tehnic asigurat pe viață', 'remotewp' ); ?></li>
-								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Cea mai avantajoasă investiție', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Lifetime access, no monthly fees', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Lifetime updates included', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Lifetime priority support', 'remotewp' ); ?></li>
+								<li><span class="dashicons dashicons-yes"></span> <?php esc_html_e( 'Best value investment', 'remotewp' ); ?></li>
 							</ul>
-							<a href="https://remotewp.dev/pricing?plan=lifetime" target="_blank" class="button button-secondary rwp-pcard-btn">
-								<?php esc_html_e( 'Obține Acces pe Viață', 'remotewp' ); ?>
+							<a href="https://buy.stripe.com/aFa5kE1tl3AR3N37pKdIA02" target="_blank" class="button button-secondary rwp-pcard-btn">
+								<?php esc_html_e( 'Get Lifetime Access', 'remotewp' ); ?>
 							</a>
 						</div>
 					</div>

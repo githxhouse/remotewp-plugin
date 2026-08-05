@@ -1,10 +1,10 @@
-﻿=== RemoteWP ===
+=== RemoteWP ===
 Contributors: xhouse
 Tags: ai, api, remote management, wordpress development, developer tools, debugging, seo, woocommerce, automation
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.6.5
+Stable tag: 3.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -81,8 +81,8 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 * Token-based authentication (64-character cryptographic tokens)
 * HTTPS enforcement (bypassed on localhost only)
 * IP whitelist with CIDR notation support
-* Rate limiting -- configurable requests per minute (default: 60/min)
-* Brute force lockout -- auto-blocks after failed authentication attempts
+* Rate limiting — configurable requests per minute (default: 60/min)
+* Brute force lockout — auto-blocks after failed authentication attempts
 * Protected files: wp-config.php, .env, .htaccess and others cannot be accessed
 * Path restrictions: limit access to specific directories
 * Write operations restricted to wp-content/
@@ -91,31 +91,31 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 
 **Filesystem API (Free)**
 
-* GET /status -- Plugin and server status, permission level
-* GET /list -- List directory contents with metadata
-* GET /read -- Read file content (up to 5MB)
-* GET /skill -- AI Agent Skill Pack with site variables pre-filled
-* GET /instructions -- Legacy AI instructions
-* GET /wp/info -- Basic site information
+* GET /status — Plugin and server status, permission level
+* GET /list — List directory contents with metadata
+* GET /read — Read file content (up to 5MB)
+* GET /skill — AI Agent Skill Pack with site variables pre-filled
+* GET /instructions — Legacy AI instructions
+* GET /wp/info — Basic site information
 
 **Filesystem API (Pro)**
 
-* POST /write -- Create or update files (with auto-backup)
-* POST /delete -- Delete files or directories (with auto-backup)
-* POST /rename -- Rename files or directories (with auto-backup)
-* POST /mkdir -- Create new directories
-* POST /restore -- Restore from automatic backup
-* GET /search -- Search file contents (grep-like)
-* POST /sync -- WAF-compatible base64-encoded request dispatcher
-* POST /process -- Alias for /sync
+* POST /write — Create or update files (with auto-backup)
+* POST /delete — Delete files or directories (with auto-backup)
+* POST /rename — Rename files or directories (with auto-backup)
+* POST /mkdir — Create new directories
+* POST /restore — Restore from automatic backup
+* GET /search — Search file contents (grep-like)
+* POST /sync — WAF-compatible base64-encoded request dispatcher
+* POST /process — Alias for /sync
 
 **WordPress Operations API (Pro)**
 
-* GET /wp/info -- Full site information: theme, plugins summary, WP version
-* GET /wp/plugins -- Full plugin list with update status
-* POST /wp/plugin/toggle -- Activate or deactivate plugins
-* GET /wp/options -- Read whitelisted WordPress options
-* POST /wp/cache-clear -- Clear all caches (WP Super Cache, W3TC, WP Rocket, LiteSpeed)
+* GET /wp/info — Full site information: theme, plugins summary, WP version
+* GET /wp/plugins — Full plugin list with update status
+* POST /wp/plugin/toggle — Activate or deactivate plugins
+* GET /wp/options — Read whitelisted WordPress options
+* POST /wp/cache-clear — Clear all caches (WP Super Cache, W3TC, WP Rocket, LiteSpeed)
 
 **Modern Admin Dashboard**
 
@@ -128,21 +128,21 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 
 = Use Cases =
 
-1. **AI-Assisted WordPress Work** -- Design, debugging, SEO, development and maintenance through compatible AI agents
-2. **Agency & Multi-Site Management** -- Apply the same controlled workflow across multiple client websites
-3. **WooCommerce Support** -- Investigate templates, checkout issues and WooCommerce customizations
-4. **Performance & SEO Investigation** -- Review code, templates and technical SEO issues in approved files
-5. **Controlled Code Modifications** -- Read, review and apply changes with automatic backups and activity logging
+1. **AI-Assisted WordPress Work** — Design, debugging, SEO, development and maintenance through compatible AI agents
+2. **Agency & Multi-Site Management** — Apply the same controlled workflow across multiple client websites
+3. **WooCommerce Support** — Investigate templates, checkout issues and WooCommerce customizations
+4. **Performance & SEO Investigation** — Review code, templates and technical SEO issues in approved files
+5. **Controlled Code Modifications** — Read, review and apply changes with automatic backups and activity logging
 
 = Quick Start =
 
 1. Install and activate the plugin
 2. Go to **RemoteWP** in the admin menu
 3. Copy the API token and endpoint
-4. Retrieve the AI Agent Skill Pack from `/wp-json/helper/v1/skill` and paste it into your AI agent
+4. Retrieve the AI Agent Skill Pack from /wp-json/helper/v1/skill and paste it into your AI agent
 5. Start making API calls:
 
-`curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/helper/v1/status`
+curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/helper/v1/status
 
 = Limitations =
 
@@ -150,7 +150,7 @@ RemoteWP provides controlled access to supported WordPress files and operations.
 
 == Installation ==
 
-1. Upload the `remotewp` folder to `/wp-content/plugins/`
+1. Upload the emotewp folder to /wp-content/plugins/
 2. Activate the plugin through the 'Plugins' menu
 3. Navigate to **RemoteWP** in the admin sidebar
 4. Copy the auto-generated API token
@@ -165,9 +165,9 @@ RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate
 = Can I limit what the API can do? =
 
 Yes. RemoteWP offers three permission profiles:
-- **Read Only** -- Only list, read, search and WordPress info operations
-- **Read & Write** -- Read plus write and create operations
-- **Full Access** -- All operations including delete and plugin management
+- **Read Only** — Only list, read, search and WordPress info operations
+- **Read & Write** — Read plus write and create operations
+- **Full Access** — All operations including delete and plugin management
 
 You can also restrict access to specific directories using path restrictions.
 
@@ -185,18 +185,18 @@ Every write, delete and rename operation automatically creates a timestamped bac
 
 = Where are backups stored? =
 
-Backups are stored in a randomized directory inside `wp-content/uploads/`. The directory is protected from web access via .htaccess, index.php and a non-guessable folder name for compatibility with Nginx and LiteSpeed.
+Backups are stored in a randomized directory inside wp-content/uploads/. The directory is protected from web access via .htaccess, index.php and a non-guessable folder name for compatibility with Nginx and LiteSpeed.
 
 == Screenshots ==
 
-1. Dashboard -- Token management and connection info
-2. Activity Log -- Filterable audit log viewer
-3. Settings -- Permissions, rate limiting and IP whitelist
+1. Dashboard — Token management and connection info
+2. Activity Log — Filterable audit log viewer
+3. Settings — Permissions, rate limiting and IP whitelist
 
 == Changelog ==
 
 = 3.6.5 =
-* Security: Changed REST API namespace to `helper/v1` to bypass WAF firewalls and server filters.
+* Security: Changed REST API namespace to helper/v1 to bypass WAF firewalls and server filters.
 * Fix: Resolve class loading issue on activation causing Class 'RemoteWP_License' not found fatal error.
 * Security: Disable hex string obfuscation in unified build to prevent antivirus false-positives and quarantines on shared hosting.
 * Docs: Update agent Skill Pack instructions to enforce Base64-encoded requests for file writing to prevent WAF connection resets and IP bans.
@@ -208,9 +208,14 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Bugfix: Normalized backslashes to forward slashes for Windows search path exclusions.
 * Compliance: Split into strictly read-only Free version and secure write-enabled Pro version.
 
+= 3.7.0 =
+* Feature: Intelligent Auto-Detection of active site capabilities & plugins (WooCommerce, Elementor, WPBakery, SEO)
+* Feature: Dynamic `/skill` API endpoint expansion serving tailored agent skills based on detected active plugins
+* Feature: Added 4 specialized skill modules (wordpress-elementor, wordpress-wpbakery, wordpress-seo, wordpress-woocommerce)
+
 = 3.2.0 =
 * Added AI Agent Skill Pack with one-click agent prompt
-* Added `/skill` REST endpoint for dynamic agent skill delivery
+* Added /skill REST endpoint for dynamic agent skill delivery
 * Security: fixed path restriction prefix bypass (directory boundary check)
 * Security: fixed ABSPATH sibling directory escape
 * Security: hardened IP spoofing protection when trust_proxy is enabled
@@ -219,6 +224,15 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Security: HTTPS localhost check uses REMOTE_ADDR instead of SERVER_NAME
 * Cleaned up legacy AI Instructions buttons in favor of Skill Pack
 * Updated API Access tab with Skill Endpoint actions
+
+= 3.7.0 =
+* Feature: Added Dynamic AI Skill Resolver & Stack-Based Skill Pack Generation
+* Feature: Added Ultra-Fast Initial Onboarding Audit (<2s single-call status response)
+* Feature: Added AI-Ready WooCommerce Catalog Perfection Loop (Score 90+ Readiness) and /llms.txt generator
+* Feature: Added Elementor & WPBakery Page Builder JSON metadata & shortcode inspection skills
+* Feature: Added Schema.org JSON-LD and SEO Meta tag audit skills for RankMath, Yoast, and SEOPress
+* Feature: Added automatic pre-write file backup (.bak) and instant /restore endpoint
+* Security: Hardened Base64 WAF payload dispatcher (/sync) to prevent firewall blocks on live production sites
 
 = 3.1.0 =
 * Added license management system with tier-based feature gating
@@ -241,11 +255,11 @@ Backups are stored in a randomized directory inside `wp-content/uploads/`. The d
 * Added auto-backup on all destructive operations
 * Added full internationalization (i18n) support
 * Improved security with HTTPS enforcement and protected files
-* Renamed API namespace to `remotewp/v1`
-* Changed auth header to `X-RemoteWP-Token`
+* Renamed API namespace to emotewp/v1
+* Changed auth header to X-RemoteWP-Token
 
 = 2.0.0 =
-* Internal release -- class-based architecture
+* Internal release — class-based architecture
 * Token authentication
 * Basic filesystem CRUD
 
@@ -261,4 +275,4 @@ Security hardening and bugfix release. Restricts write operations to wp-content/
 Security hardening release. Fixes path traversal edge cases, IP spoofing, and XSS. Adds AI Agent Skill Pack for one-click agent integration.
 
 = 3.0.0 =
-Major update with new security features, WordPress Operations API, and modern admin dashboard. The API namespace changed from `xhouse-api/v1` to `remotewp/v1` and the auth header changed from `X-House-Token` to `X-RemoteWP-Token`. Backward compatibility with the old header is maintained.
+Major update with new security features, WordPress Operations API, and modern admin dashboard. The API namespace changed from xhouse-api/v1 to emotewp/v1 and the auth header changed from X-House-Token to X-RemoteWP-Token. Backward compatibility with the old header is maintained.

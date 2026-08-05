@@ -3,7 +3,7 @@
  * Plugin Name: RemoteWP
  * Plugin URI:  https://remotewp.dev
  * Description: The AI-Ready WordPress Bridge. Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
- * Version:     3.6.5
+ * Version:     3.7.0
  * Author:      X-HOUSE SRL
  * Author URI:  https://xhouse.ro
  * License:     GPL-2.0-or-later
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants
-define( 'REMOTEWP_VERSION', '3.6.5' );
+define( 'REMOTEWP_VERSION', '3.7.0' );
 define( 'REMOTEWP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
