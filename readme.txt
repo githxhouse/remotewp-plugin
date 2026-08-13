@@ -150,7 +150,7 @@ RemoteWP provides controlled access to supported WordPress files and operations.
 
 == Installation ==
 
-1. Upload the emotewp folder to /wp-content/plugins/
+1. Upload the `remotewp` folder to `/wp-content/plugins/`
 2. Activate the plugin through the 'Plugins' menu
 3. Navigate to **RemoteWP** in the admin sidebar
 4. Copy the auto-generated API token
