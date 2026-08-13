@@ -229,6 +229,21 @@ class RemoteWP_FS_API {
 	 */
 	public function get_status( $request ) {
 		$permission_level = get_option( 'remotewp_permission_level', 'full' );
+		$license          = $this->license;
+		$license_key      = $license->get_license_key();
+		$tier             = get_option( 'remotewp_license_tier', 'free' );
+		$is_pro           = $this->license->is_pro();
+
+		$is_trial         = false;
+		$tier_display     = ucfirst( $tier );
+
+		$trial_expires = get_option( 'remotewp_license_trial_expires', '' );
+		$is_trial      = ! empty( $trial_expires ) && strtotime( $trial_expires ) > time();
+
+		if ( $is_pro && ( strpos( $license_key, 'RWFREE' ) === 0 || $is_trial ) ) {
+			$is_trial     = true;
+			$tier_display = 'Free (PRO Trial 48h Active)';
+		}
 
 		return rest_ensure_response( array(
 			'status'           => 'ok',
@@ -241,7 +256,9 @@ class RemoteWP_FS_API {
 			'rate_limit'       => (int) get_option( 'remotewp_rate_limit', 60 ),
 			'max_upload_size'  => wp_max_upload_size(),
 			'timezone'         => wp_timezone_string(),
-			'is_pro'           => defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO,
+			'license_tier'     => $tier_display,
+			'is_pro'           => $is_pro,
+			'is_trial'         => $is_trial,
 		) );
 	}
 

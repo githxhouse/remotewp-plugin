@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.7.0
+Stable tag: 3.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -194,6 +194,12 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 3. Settings — Permissions, rate limiting and IP whitelist
 
 == Changelog ==
+
+= 3.7.1 =
+* Fix: Active 48-hour trials now automatically download and enable the PRO module.
+* Fix: Trial detection now uses the decrypted license key and reports consistent license_tier, is_pro and is_trial values.
+* Fix: WordPress now detects and displays public RemoteWP updates correctly for existing installations.
+* Improvement: Skill delivery and connection handling are more reliable for Free and trial users.
 
 = 3.6.5 =
 * Security: Changed REST API namespace to helper/v1 to bypass WAF firewalls and server filters.

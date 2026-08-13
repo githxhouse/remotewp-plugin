@@ -36,6 +36,7 @@ class RemoteWP_License {
 	const OPT_STATUS  = 'remotewp_license_status';
 	const OPT_TIER    = 'remotewp_license_tier';
 	const OPT_EXPIRES = 'remotewp_license_expires';
+	const OPT_TRIAL_EXPIRES = 'remotewp_license_trial_expires';
 
 	/**
 	 * Get the current license tier.
@@ -59,6 +60,18 @@ class RemoteWP_License {
 			return 'free';
 		}
 
+		// A trial is represented as a developer entitlement while active.
+		// Once it expires, remove the cached encrypted module and fall back to
+		// the Free tier on the next WordPress request.
+		$trial_expires = get_option( self::OPT_TRIAL_EXPIRES, '' );
+		if ( ! empty( $trial_expires ) && strtotime( $trial_expires ) <= time() ) {
+			if ( class_exists( 'RemoteWP_Pro_Loader' ) ) {
+				( new RemoteWP_Pro_Loader( $this ) )->delete_module();
+			}
+			update_option( self::OPT_TIER, 'free' );
+			return 'free';
+		}
+
 		// Check expiration for non-lifetime
 		$tier    = get_option( self::OPT_TIER, 'free' );
 		$expires = get_option( self::OPT_EXPIRES, '' );
@@ -66,6 +79,9 @@ class RemoteWP_License {
 		if ( 'lifetime' !== $tier && ! empty( $expires ) && strtotime( $expires ) < time() ) {
 			// License expired
 			update_option( self::OPT_STATUS, 'expired' );
+			if ( class_exists( 'RemoteWP_Pro_Loader' ) ) {
+				( new RemoteWP_Pro_Loader( $this ) )->delete_module();
+			}
 			return 'free';
 		}
 
@@ -78,7 +94,7 @@ class RemoteWP_License {
 	 * @return bool
 	 */
 	public function is_pro() {
-		return defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO;
+		return defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO && 'free' !== $this->get_tier();
 	}
 
 	/**
@@ -123,10 +139,13 @@ class RemoteWP_License {
 		update_option( self::OPT_STATUS, 'active' );
 		update_option( self::OPT_TIER, sanitize_key( $body['tier'] ?? 'developer' ) );
 		update_option( self::OPT_EXPIRES, sanitize_text_field( $body['expires'] ?? '' ) );
+		update_option( self::OPT_TRIAL_EXPIRES, sanitize_text_field( $body['trial_expires'] ?? '' ) );
 
 		// Fetch Pro module from server (server-side code delivery)
 		$tier = sanitize_key( $body['tier'] ?? 'developer' );
-		if ( 'free' !== $tier && class_exists( 'RemoteWP_Pro_Loader' ) ) {
+		// Trial licenses are returned as developer while active, so they must
+		// fetch the encrypted module exactly like paid Pro licenses.
+		if ( ( ! empty( $body['is_pro'] ) || 'free' !== $tier ) && class_exists( 'RemoteWP_Pro_Loader' ) ) {
 			$loader = new RemoteWP_Pro_Loader( $this );
 			$loader->fetch_module();
 		}
@@ -202,6 +221,7 @@ class RemoteWP_License {
 		update_option( self::OPT_STATUS, 'inactive' );
 		update_option( self::OPT_TIER, 'free' );
 		delete_option( self::OPT_EXPIRES );
+		delete_option( self::OPT_TRIAL_EXPIRES );
 
 		// Delete Pro module (server-side code delivery)
 		if ( class_exists( 'RemoteWP_Pro_Loader' ) ) {
@@ -259,6 +279,9 @@ class RemoteWP_License {
 		if ( ! empty( $body['expires'] ) ) {
 			update_option( self::OPT_EXPIRES, sanitize_text_field( $body['expires'] ) );
 		}
+		if ( ! empty( $body['trial_expires'] ) ) {
+			update_option( self::OPT_TRIAL_EXPIRES, sanitize_text_field( $body['trial_expires'] ) );
+		}
 
 		return true;
 	}
@@ -288,6 +311,16 @@ class RemoteWP_License {
 	 * @return string
 	 */
 	public function get_tier_label( $tier ) {
+		$key    = $this->get_license_key();
+		$is_pro = defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO;
+
+		$trial_expires = get_option( self::OPT_TRIAL_EXPIRES, '' );
+		$is_trial = ! empty( $trial_expires ) && strtotime( $trial_expires ) > time();
+
+		if ( $is_pro && ( strpos( $key, 'RWFREE' ) === 0 || $is_trial ) ) {
+			return __( 'Free (PRO Trial 48h Active)', 'remotewp' );
+		}
+
 		$labels = array(
 			'free'      => __( 'Free', 'remotewp' ),
 			'developer' => __( 'Developer', 'remotewp' ),

@@ -3,14 +3,14 @@
  * Plugin Name: RemoteWP
  * Plugin URI:  https://remotewp.dev
  * Description: The AI-Ready WordPress Bridge. Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
- * Version:     3.7.0
+ * Version:     3.7.1
  * Author:      X-HOUSE SRL
  * Author URI:  https://xhouse.ro
  * License:     GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: remotewp
  * Domain Path: /languages
- * Requires at least: 5.8
+ * Requires at least: 5.0
  * Requires PHP: 7.4
  */
 
@@ -18,8 +18,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// --- WordPress version compatibility check ---
+define( 'REMOTEWP_MIN_WP_VERSION', '5.8' );
+
+if ( version_compare( get_bloginfo( 'version' ), REMOTEWP_MIN_WP_VERSION, '<' ) ) {
+	add_action( 'admin_notices', function () {
+		$current = get_bloginfo( 'version' );
+		echo '<div class="notice notice-error" style="border-left-color:#dc3545;padding:12px 16px;">';
+		echo '<p style="font-size:14px;margin:0 0 6px;"><strong>⚠️ RemoteWP — WordPress Update Required</strong></p>';
+		echo '<p style="margin:0;">RemoteWP requires <strong>WordPress ' . esc_html( REMOTEWP_MIN_WP_VERSION ) . '+</strong>. ';
+		echo 'Your current version is <strong>' . esc_html( $current ) . '</strong>.</p>';
+		echo '<p style="margin:8px 0 0;"><a href="' . esc_url( admin_url( 'update-core.php' ) ) . '" class="button button-primary" style="margin-right:8px;">Update WordPress Now</a>';
+		echo '<a href="https://remotewp.dev/docs/requirements" target="_blank" rel="noopener" style="text-decoration:underline;">Learn more</a></p>';
+		echo '</div>';
+	} );
+
+
+
+	return; // Stop loading the rest of the plugin
+}
+
 // Plugin constants
-define( 'REMOTEWP_VERSION', '3.7.0' );
+define( 'REMOTEWP_VERSION', '3.7.1' );
 define( 'REMOTEWP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -119,7 +139,7 @@ function remotewp_init() {
 	if ( REMOTEWP_HAS_LOCAL_PRO ) {
 		// Full/internal build: classes already loaded directly
 		$pro_loaded = true;
-	} elseif ( REMOTEWP_IS_PRO ) {
+	} elseif ( REMOTEWP_IS_PRO && 'free' !== $license->get_tier() ) {
 		// Server-delivered Pro: decrypt and load module at runtime
 		$loader     = new RemoteWP_Pro_Loader( $license );
 		$pro_loaded = $loader->load_module();
@@ -193,12 +213,107 @@ function remotewp_activate() {
 		$license->auto_activate( $internal_key );
 	}
 
+	// Auto-whitelist endpoints in Wordfence if installed
+	remotewp_auto_whitelist_wordfence();
+
 	// Schedule daily license verification (only for Pro builds)
 	if ( REMOTEWP_IS_PRO && ! wp_next_scheduled( 'remotewp_daily_license_check' ) ) {
 		wp_schedule_event( time(), 'daily', 'remotewp_daily_license_check' );
 	}
 }
 register_activation_hook( __FILE__, 'remotewp_activate' );
+
+/**
+ * Auto-whitelist RemoteWP REST API routes in Wordfence firewall if Wordfence is present.
+ */
+function remotewp_auto_whitelist_wordfence() {
+	if ( ! class_exists( 'wfConfig' ) && ! class_exists( 'wordfence' ) ) {
+		return;
+	}
+
+	try {
+		$endpoints = array(
+			'/wp-json/remotewp/v1/',
+			'/wp-json/remotewp-license/v1/',
+			'/wp-json/helper/v1/',
+		);
+
+		if ( class_exists( 'wfConfig' ) ) {
+			$existing_raw = wfConfig::get( 'whitelistedURLParams', '[]' );
+			$existing     = is_string( $existing_raw ) ? json_decode( $existing_raw, true ) : (array) $existing_raw;
+			if ( ! is_array( $existing ) ) {
+				$existing = array();
+			}
+
+			$modified = false;
+			foreach ( $endpoints as $ep ) {
+				$found = false;
+				foreach ( $existing as $rule ) {
+					if ( isset( $rule['url'] ) && false !== strpos( $rule['url'], $ep ) ) {
+						$found = true;
+						break;
+					}
+				}
+				if ( ! $found ) {
+					$existing[] = array(
+						'url'             => $ep,
+						'param'           => '*',
+						'whitelistConfig' => 'all',
+						'description'     => 'RemoteWP REST API Bridge (Auto-Whitelisted)',
+						'source'          => 'remotewp',
+					);
+					$modified = true;
+				}
+			}
+
+			if ( $modified ) {
+				wfConfig::set( 'whitelistedURLParams', json_encode( $existing ) );
+			}
+		} else {
+			global $wpdb;
+			$table = $wpdb->prefix . 'wfconfig';
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+				$existing_raw = $wpdb->get_var( $wpdb->prepare( "SELECT val FROM {$table} WHERE name = %s", 'whitelistedURLParams' ) );
+				$existing     = ! empty( $existing_raw ) ? json_decode( $existing_raw, true ) : array();
+				if ( ! is_array( $existing ) ) {
+					$existing = array();
+				}
+
+				$modified = false;
+				foreach ( $endpoints as $ep ) {
+					$found = false;
+					foreach ( $existing as $rule ) {
+						if ( isset( $rule['url'] ) && false !== strpos( $rule['url'], $ep ) ) {
+							$found = true;
+							break;
+						}
+					}
+					if ( ! $found ) {
+						$existing[] = array(
+							'url'             => $ep,
+							'param'           => '*',
+							'whitelistConfig' => 'all',
+							'description'     => 'RemoteWP REST API Bridge (Auto-Whitelisted)',
+							'source'          => 'remotewp',
+						);
+						$modified = true;
+					}
+				}
+
+				if ( $modified ) {
+					$wpdb->query( $wpdb->prepare(
+						"INSERT INTO {$table} (name, val, autoload) VALUES (%s, %s, 'yes') ON DUPLICATE KEY UPDATE val = %s",
+						'whitelistedURLParams',
+						json_encode( $existing ),
+						json_encode( $existing )
+					) );
+				}
+			}
+		}
+	} catch ( Exception $e ) {
+		// Silent catch if Wordfence is not present or in unknown state
+	}
+}
 
 /**
  * Deactivation: cleanup transients.

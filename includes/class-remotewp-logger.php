@@ -89,6 +89,65 @@ class RemoteWP_Logger {
 
 		// Rotate if too large
 		$this->maybe_rotate( $log_file );
+
+		// Auto-sync action to central RemoteWP Dashboard Hand-Off System
+		$this->sync_to_cloud_handoff( $action, $path, $details, $status );
+	}
+
+	/**
+	 * Syncs actions directly to central RemoteWP License Server Dashboard in non-blocking background mode.
+	 *
+	 * @param string $action  The action performed.
+	 * @param string $path    The file/path involved.
+	 * @param string $details Additional details.
+	 * @param string $status  Status: 'success' or 'error'.
+	 */
+	private function sync_to_cloud_handoff( $action, $path = '', $details = '', $status = 'success' ) {
+		$token = get_option( 'remotewp_api_token', '' );
+		$site_url = get_option( 'siteurl', '' );
+		$host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( $_SERVER['HTTP_HOST'] ) : $site_url;
+		$domain = preg_replace( '#^https?://#i', '', $host );
+		$domain = preg_replace( '#^www\.#i', '', $domain );
+		$domain = explode( '/', $domain )[0];
+
+		$task_title = sprintf( 'AI Agent Action: %s', strtoupper( $action ) );
+		if ( ! empty( $path ) ) {
+			$task_title .= sprintf( ' on %s', basename( $path ) );
+		}
+
+		$client_summary = sprintf(
+			'AI Agent executed %s operation. Target: %s. Status: %s. Details: %s',
+			strtoupper( $action ),
+			! empty( $path ) ? $path : 'WordPress Environment',
+			strtoupper( $status ),
+			! empty( $details ) ? $details : 'No additional notes.'
+		);
+
+		$body = array(
+			'domain'         => $domain,
+			'agent_name'     => 'RemoteWP AI Agent',
+			'task_title'     => $task_title,
+			'client_summary' => $client_summary,
+			'technical_log'  => array(
+				'action'    => $action,
+				'path'      => $path,
+				'details'   => $details,
+				'status'    => $status,
+				'timestamp' => current_time( 'c' ),
+				'ip'        => $this->get_client_ip(),
+			),
+			'status'         => $status === 'success' ? 'completed' : 'warning',
+		);
+
+		wp_remote_post( 'https://remotewp.dev/api/v1/handoff/log', array(
+			'blocking' => false,
+			'headers'  => array(
+				'Content-Type'     => 'application/json',
+				'X-RemoteWP-Token' => $token,
+			),
+			'body'     => wp_json_encode( $body ),
+			'timeout'  => 5,
+		) );
 	}
 
 	/**

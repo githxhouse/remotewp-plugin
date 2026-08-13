@@ -100,7 +100,9 @@ class RemoteWP_Updater {
 		}
 
 		// Get license info (fallback to internal key for FULL builds)
-		$license_key = get_option( 'remotewp_license_key', '' );
+		$license_key = class_exists( 'RemoteWP_License' )
+			? ( new RemoteWP_License() )->get_license_key()
+			: get_option( 'remotewp_license_key', '' );
 		if ( empty( $license_key ) && function_exists( 'remotewp_decode_internal_key' ) ) {
 			$license_key = remotewp_decode_internal_key();
 		}
@@ -181,7 +183,9 @@ class RemoteWP_Updater {
 			return $result;
 		}
 
-		$license_key = get_option( 'remotewp_license_key', '' );
+		$license_key = class_exists( 'RemoteWP_License' )
+			? ( new RemoteWP_License() )->get_license_key()
+			: get_option( 'remotewp_license_key', '' );
 
 		if ( empty( $license_key ) ) {
 			return $result;
