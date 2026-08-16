@@ -25,14 +25,21 @@ class RemoteWP_Auth {
 	private $logger;
 
 	/**
+	 * @var RemoteWP_Permissions|null
+	 */
+	private $permissions;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param RemoteWP_Rate_Limiter $rate_limiter Rate limiter instance.
-	 * @param RemoteWP_Logger       $logger       Logger instance.
+	 * @param RemoteWP_Logger             $logger       Logger instance.
+	 * @param RemoteWP_Permissions|null   $permissions  Central operation policy.
 	 */
-	public function __construct( RemoteWP_Rate_Limiter $rate_limiter, RemoteWP_Logger $logger ) {
+	public function __construct( RemoteWP_Rate_Limiter $rate_limiter, RemoteWP_Logger $logger, $permissions = null ) {
 		$this->rate_limiter = $rate_limiter;
 		$this->logger       = $logger;
+		$this->permissions  = $permissions;
 	}
 
 	/**
@@ -123,6 +130,60 @@ class RemoteWP_Auth {
 		$this->rate_limiter->reset_failures( $ip );
 
 		return true;
+	}
+
+	/**
+	 * Validate v2 token records, falling back to the legacy token for migration.
+	 *
+	 * @param WP_REST_Request $request         Request object.
+	 * @param string          $required_scope Required v2 scope.
+	 * @return true|WP_Error
+	 */
+	public function validate_v2_request( WP_REST_Request $request, $required_scope = '', $operation = '' ) {
+		$v2_token = $request->get_header( 'x_remotewp_v2_token' );
+		if ( ! empty( $v2_token ) ) {
+			$result = RemoteWP_V2_Token_Store::validate( $v2_token, $required_scope );
+			if ( is_wp_error( $result ) ) {
+				$this->logger->log( 'V2_AUTH_FAIL', '', $result->get_error_code(), 'error' );
+				return $result;
+			}
+			return $this->authorize_operation( $operation );
+		}
+
+		$legacy_result = $this->validate_request( $request );
+		if ( is_wp_error( $legacy_result ) ) {
+			return $legacy_result;
+		}
+		return $this->authorize_operation( $operation );
+	}
+
+	/**
+	 * Apply the site permission profile and license gate in one place.
+	 *
+	 * v1 handlers retain their existing checks for backward compatibility and
+	 * defense in depth. v2 permission callbacks call this method before the
+	 * request reaches a handler, so a v2 token cannot bypass a later profile
+	 * downgrade or license change.
+	 *
+	 * @param string $operation Internal operation name.
+	 * @return true|WP_Error
+	 */
+	private function authorize_operation( $operation ) {
+		if ( empty( $operation ) ) {
+			return true;
+		}
+
+		$permissions = $this->permissions;
+		if ( ! is_object( $permissions ) || ! method_exists( $permissions, 'can' ) ) {
+			$permissions = new RemoteWP_Permissions();
+		}
+
+		$permission_result = $permissions->can( $operation );
+		if ( is_wp_error( $permission_result ) ) {
+			return $permission_result;
+		}
+
+		return class_exists( 'RemoteWP_Rollout_Policy' ) ? RemoteWP_Rollout_Policy::authorize( $operation ) : true;
 	}
 
 	/**

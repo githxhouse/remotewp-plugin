@@ -107,101 +107,7 @@ class RemoteWP_Permissions {
 	 * @return string|WP_Error Absolute real path on success, WP_Error on failure.
 	 */
 	public function sanitize_path( $path, $must_exist = true, $is_write = false ) {
-		$real_base = realpath( ABSPATH );
-
-		if ( empty( $path ) || '/' === $path ) {
-			return $real_base;
-		}
-
-		// Normalize path separators
-		$path = str_replace( '\\', '/', $path );
-		// Remove leading slash
-		$path = ltrim( $path, '/' );
-
-		$full_path = ABSPATH . $path;
-		$real_path = realpath( $full_path );
-
-		if ( false === $real_path ) {
-			if ( ! $must_exist ) {
-				// For new files, check parent directory
-				$parent_dir  = dirname( $full_path );
-				$real_parent = realpath( $parent_dir );
-
-				if ( false !== $real_parent && ( $real_parent === $real_base || 0 === strpos( $real_parent, $real_base . DIRECTORY_SEPARATOR ) ) ) {
-					$constructed = $real_parent . DIRECTORY_SEPARATOR . basename( $path );
-
-					if ( $this->is_protected_file( $constructed ) ) {
-						return new WP_Error(
-							'protected_file',
-							__( 'This file is protected and cannot be accessed via the API.', 'remotewp' ),
-							array( 'status' => 403 )
-						);
-					}
-
-					// Check path restrictions
-					$path_check = $this->check_path_restrictions( $constructed, $real_base );
-					if ( is_wp_error( $path_check ) ) {
-						return $path_check;
-					}
-
-					// Restrict write/modify operations to wp-content
-					if ( $is_write ) {
-						$write_check = $this->check_write_restrictions( $constructed );
-						if ( is_wp_error( $write_check ) ) {
-							return $write_check;
-						}
-					}
-
-					return $constructed;
-				}
-
-				return new WP_Error(
-					'invalid_path',
-					__( 'Invalid path or parent directory does not exist.', 'remotewp' ),
-					array( 'status' => 400 )
-				);
-			}
-
-			return new WP_Error(
-				'not_found',
-				__( 'Path does not exist.', 'remotewp' ),
-				array( 'status' => 404 )
-			);
-		}
-
-		// Security: ensure path is within ABSPATH (prevent directory traversal and sibling escape)
-		if ( $real_path !== $real_base && 0 !== strpos( $real_path, $real_base . DIRECTORY_SEPARATOR ) ) {
-			return new WP_Error(
-				'path_traversal',
-				__( 'Access denied. Path is outside the allowed directory.', 'remotewp' ),
-				array( 'status' => 403 )
-			);
-		}
-
-		// Check protected files
-		if ( $this->is_protected_file( $real_path ) ) {
-			return new WP_Error(
-				'protected_file',
-				__( 'This file is protected and cannot be accessed via the API.', 'remotewp' ),
-				array( 'status' => 403 )
-			);
-		}
-
-		// Check path restrictions
-		$path_check = $this->check_path_restrictions( $real_path, $real_base );
-		if ( is_wp_error( $path_check ) ) {
-			return $path_check;
-		}
-
-		// Restrict write/modify operations to wp-content
-		if ( $is_write ) {
-			$write_check = $this->check_write_restrictions( $real_path );
-			if ( is_wp_error( $write_check ) ) {
-				return $write_check;
-			}
-		}
-
-		return $real_path;
+		return RemoteWP_Path_Policy::resolve( $path, $must_exist, $is_write );
 	}
 
 	/**
@@ -211,23 +117,7 @@ class RemoteWP_Permissions {
 	 * @return bool
 	 */
 	public function is_protected_file( $path ) {
-		// Normalize path separators
-		$normalized_path = str_replace( '\\', '/', $path );
-		$real_base       = realpath( ABSPATH );
-
-		// Extract relative path from ABSPATH
-		$relative_path = ltrim( str_replace( $real_base, '', $normalized_path ), '/' );
-		$segments      = explode( '/', $relative_path );
-
-		// Security: recursively block access to any hidden directories/files (e.g. .git/, .github/, .env, .htaccess)
-		foreach ( $segments as $segment ) {
-			if ( 0 === strpos( $segment, '.' ) && '.' !== $segment && '..' !== $segment ) {
-				return true;
-			}
-		}
-
-		$basename = strtolower( basename( $path ) );
-		return in_array( $basename, $this->protected_files, true );
+		return RemoteWP_Path_Policy::is_protected( $path );
 	}
 
 	/**

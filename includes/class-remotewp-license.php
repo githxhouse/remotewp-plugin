@@ -287,6 +287,105 @@ class RemoteWP_License {
 	}
 
 	/**
+	 * Submit a redacted beneficiary identity claim to the central tenant service.
+	 *
+	 * The server resolves the agency account from the authenticated Pro license;
+	 * this method deliberately never accepts or sends agency_account_id.
+	 *
+	 * @param array $claim Identity evidence collected by the operating agent.
+	 * @return array|WP_Error
+	 */
+	public function submit_domain_identity_claim( $claim ) {
+		if ( ! is_array( $claim ) || ! $this->is_pro() ) {
+			return new WP_Error( 'pro_required', __( 'An active Pro license is required for domain identity claims.', 'remotewp' ) );
+		}
+
+		$license_key = $this->get_license_key();
+		if ( empty( $license_key ) ) {
+			return new WP_Error( 'no_license', __( 'No active license key is available.', 'remotewp' ) );
+		}
+
+		$payload = $claim;
+		unset(
+			$payload['agency_account_id'],
+			$payload['beneficiary_id'],
+			$payload['platform_operator'],
+			$payload['executor_name'],
+			$payload['client_name'],
+			$payload['author']
+		);
+		$payload['site_id'] = $this->get_site_id();
+		$payload['domain']  = $this->get_site_domain();
+
+		$server = defined( 'REMOTEWP_LICENSE_SERVER' ) ? REMOTEWP_LICENSE_SERVER : 'https://remotewp.dev';
+		$url    = trailingslashit( $server ) . 'api/v1/tenant/domain-identity-claims';
+		$request_id = $this->new_transport_request_id();
+
+		$response = wp_remote_post( $url, array(
+			'timeout' => 15,
+			'body'    => wp_json_encode( $payload ),
+			'headers' => $this->get_tenant_request_headers( $license_key, $request_id ),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			return $this->tenant_transport_error(
+				'connection_failed',
+				__( 'Could not connect to the RemoteWP tenant service. Check the WAF/firewall logs using the RemoteWP request ID.', 'remotewp' ),
+				'/api/v1/tenant/domain-identity-claims',
+				$request_id
+			);
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( $code < 200 || $code >= 300 || empty( $body['success'] ) ) {
+			$error_code = ! empty( $body['code'] ) ? sanitize_key( $body['code'] ) : 'identity_claim_failed';
+			$message     = ! empty( $body['message'] ) ? sanitize_text_field( $body['message'] ) : __( 'The domain identity claim could not be recorded. Check the WAF/firewall logs using the RemoteWP request ID.', 'remotewp' );
+			return $this->tenant_transport_error( $error_code, $message, '/api/v1/tenant/domain-identity-claims', $request_id, $code, $response );
+		}
+
+		return $body;
+	}
+
+	/**
+	 * Submit a redacted technical handoff after the administrator enabled the
+	 * explicit external handoff consent setting.
+	 *
+	 * @param array $handoff Handoff payload without platform/account identity.
+	 * @return true|WP_Error
+	 */
+	public function submit_handoff_log( $handoff ) {
+		if ( ! get_option( 'remotewp_handoff_consent', false ) ) {
+			return new WP_Error( 'handoff_consent_required', __( 'External handoff consent is disabled.', 'remotewp' ) );
+		}
+		if ( ! is_array( $handoff ) || ! $this->is_pro() ) {
+			return new WP_Error( 'pro_required', __( 'An active Pro license is required for external handoff.', 'remotewp' ) );
+		}
+
+		$license_key = $this->get_license_key();
+		if ( empty( $license_key ) ) {
+			return new WP_Error( 'no_license', __( 'No active license key is available.', 'remotewp' ) );
+		}
+
+		$payload = $handoff;
+		unset( $payload['agency_account_id'], $payload['beneficiary_id'], $payload['platform_operator'] );
+		$payload['site_id'] = $this->get_site_id();
+		$payload['domain']  = $this->get_site_domain();
+
+		$server = defined( 'REMOTEWP_LICENSE_SERVER' ) ? REMOTEWP_LICENSE_SERVER : 'https://remotewp.dev';
+		$url    = trailingslashit( $server ) . 'api/v1/handoff/log';
+		$request_id = $this->new_transport_request_id();
+		$response = wp_remote_post( $url, array(
+			'blocking' => false,
+			'timeout'  => 5,
+			'body'     => wp_json_encode( $payload ),
+			'headers'  => $this->get_tenant_request_headers( $license_key, $request_id ),
+		) );
+
+		return is_wp_error( $response ) ? $response : true;
+	}
+
+	/**
 	 * Get license info for display.
 	 *
 	 * @return array
@@ -359,6 +458,75 @@ class RemoteWP_License {
 		// Strip www. to match server-side normalizeDomain()
 		$host = preg_replace( '/^www\./i', '', $host );
 		return strtolower( $host );
+	}
+
+	/**
+	 * Get the opaque, deterministic identity of the current WordPress site.
+	 *
+	 * @return string
+	 */
+	public function get_site_id() {
+		return hash( 'sha256', strtolower( untrailingslashit( (string) home_url( '/' ) ) ) );
+	}
+
+	/**
+	 * Create a safe correlation ID for central/WAF diagnostics.
+	 *
+	 * @return string
+	 */
+	private function new_transport_request_id() {
+		return function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : uniqid( 'rwp_', true );
+	}
+
+	/**
+	 * Build headers shared by central tenant requests.
+	 *
+	 * @param string $license_key License key.
+	 * @param string $request_id  Correlation ID.
+	 * @return array
+	 */
+	private function get_tenant_request_headers( $license_key, $request_id ) {
+		return array(
+			'Authorization'          => 'Bearer ' . $license_key,
+			'Content-Type'            => 'application/json',
+			'Accept'                 => 'application/json',
+			'X-RemoteWP-Request-ID'  => sanitize_text_field( $request_id ),
+			'X-RemoteWP-Client'      => 'remotewp-plugin/' . ( defined( 'REMOTEWP_VERSION' ) ? REMOTEWP_VERSION : 'unknown' ),
+		);
+	}
+
+	/**
+	 * Return a redacted transport error that helps identify WAF/firewall blocks.
+	 * Never include request bodies, license keys or response HTML in the error.
+	 *
+	 * @param string $code       WordPress error code.
+	 * @param string $message    Safe user-facing message.
+	 * @param string $endpoint   Remote endpoint path.
+	 * @param string $request_id Local correlation ID.
+	 * @param int    $status     HTTP status.
+	 * @param array  $response   Optional WP HTTP response.
+	 * @return WP_Error
+	 */
+	private function tenant_transport_error( $code, $message, $endpoint, $request_id, $status = 0, $response = array() ) {
+		$remote_request_id = ! empty( $response ) ? wp_remote_retrieve_header( $response, 'x-remotewp-request-id' ) : '';
+		$correlation_id    = $remote_request_id ? sanitize_text_field( $remote_request_id ) : sanitize_text_field( $request_id );
+		$diagnostic        = 'transport_error';
+
+		if ( in_array( (int) $status, array( 403, 406, 413, 429, 503 ), true ) ) {
+			$diagnostic = 'possible_waf_or_firewall_block';
+		}
+
+		return new WP_Error(
+			$code,
+			$message,
+			array(
+				'endpoint'        => sanitize_text_field( $endpoint ),
+				'http_status'     => (int) $status,
+				'request_id'      => $correlation_id,
+				'diagnostic'      => $diagnostic,
+				'retryable'       => in_array( (int) $status, array( 429, 502, 503, 504 ), true ),
+			)
+		);
 	}
 
 	/**
