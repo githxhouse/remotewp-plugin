@@ -144,6 +144,10 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 
 curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/helper/v1/status
 
+= Video Tutorial =
+
+Watch the official RemoteWP tutorial: https://www.youtube.com/watch?v=98sJw7tmmWQ
+
 = Limitations =
 
 RemoteWP provides controlled access to supported WordPress files and operations. It does not guarantee that an AI-generated recommendation or code modification is correct. Visual inspection, browser testing, analytics and external SEO data may require additional tools. You remain responsible for configuring permissions and reviewing sensitive operations.

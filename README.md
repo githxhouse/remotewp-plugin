@@ -171,6 +171,16 @@ curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
   "https://yoursite.com/wp-json/helper/v1/read?path=wp-content/themes/mytheme/style.css"
 ```
 
+## Video Tutorial: Connect AI Agents to WordPress
+
+Watch the official RemoteWP how-to video to see how Claude, Cursor, Codex and Gemini connect to WordPress through the RemoteWP plugin:
+
+[![How to Connect AI Agents to WordPress with RemoteWP](https://img.youtube.com/vi/98sJw7tmmWQ/hqdefault.jpg)](https://www.youtube.com/watch?v=98sJw7tmmWQ)
+
+[Watch the RemoteWP WordPress AI agent setup tutorial on YouTube](https://www.youtube.com/watch?v=98sJw7tmmWQ)
+
+After watching the tutorial, visit the [RemoteWP GitHub repository](https://github.com/githxhouse/remotewp-plugin) to review the code, open an issue or contribute.
+
 ## Example AI Agent Tasks
 
 **WordPress design**
