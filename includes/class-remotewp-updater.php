@@ -64,6 +64,9 @@ class RemoteWP_Updater {
 	 * Constructor — register WordPress hooks.
 	 */
 	public function __construct() {
+		// Version-scoped cache prevents an old negative result from hiding a new
+		// package for up to the previous cache TTL after a release.
+		$this->cache_key = 'remotewp_update_check_' . str_replace( '.', '_', REMOTEWP_VERSION );
 		$this->plugin_basename = defined( 'REMOTEWP_PLUGIN_BASENAME' )
 			? REMOTEWP_PLUGIN_BASENAME
 			: 'remotewp/remotewp.php';
@@ -78,6 +81,10 @@ class RemoteWP_Updater {
 
 		// Clear cache after update
 		add_action( 'upgrader_process_complete', array( $this, 'clear_update_cache' ), 10, 2 );
+
+		// When WordPress runs an update for this plugin, replace the existing
+		// destination instead of leaving a stale/partial folder behind.
+		add_filter( 'upgrader_package_options', array( $this, 'force_overwrite_remote_package' ) );
 
 		// Clear cache when license is activated/deactivated
 		add_action( 'update_option_remotewp_license_key', array( $this, 'clear_update_cache_simple' ) );
@@ -244,6 +251,29 @@ class RemoteWP_Updater {
 	 */
 	public function clear_update_cache_simple() {
 		delete_transient( $this->cache_key );
+	}
+
+	/**
+	 * Make RemoteWP updates replace the existing plugin directory.
+	 *
+	 * This is intentionally scoped to the RemoteWP plugin basename or the
+	 * RemoteWP package URL; unrelated plugin uploads keep WordPress defaults.
+	 *
+	 * @param array $options Package options passed through WordPress upgrader.
+	 * @return array
+	 */
+	public function force_overwrite_remote_package( $options ) {
+		$package = isset( $options['package'] ) ? (string) $options['package'] : '';
+		$plugin  = $options['hook_extra']['plugin'] ?? '';
+		$is_remote = $plugin === $this->plugin_basename || false !== strpos( $package, 'remotewp.dev' );
+
+		if ( ! $is_remote ) {
+			return $options;
+		}
+
+		$options['clear_destination']        = true;
+		$options['abort_if_destination_exists'] = false;
+		return $options;
 	}
 
 	/**

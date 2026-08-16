@@ -73,6 +73,9 @@ class RemoteWP_FS_API {
 	 */
 	public function register_routes() {
 		$auth_callback = array( $this->auth, 'validate_request' );
+		$v2_read_callback = function ( $request ) {
+			return $this->auth->validate_v2_request( $request, 'files:read', 'read' );
+		};
 
 		$routes = array(
 			array( '/list',         'GET', 'list_dir' ),
@@ -92,6 +95,127 @@ class RemoteWP_FS_API {
 				)
 			);
 		}
+
+		// Additive v2 read flow. v1 remains unchanged for existing connectors.
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/read',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'read_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/content/(?P<handle>[A-Za-z0-9_-]+)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_content_handle_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/openapi.json',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_openapi_v2' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/context',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_context_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/health',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_health_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/status',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_status_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/wp/info',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'get_wp_info_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/fs/list',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'list_v2_enveloped' ),
+				'permission_callback' => function ( $request ) {
+					return $this->auth->validate_v2_request( $request, 'files:list', 'list' );
+				},
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/fs/read',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'read_fs_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/fs/validate',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'validate_path_v2_enveloped' ),
+				'permission_callback' => $v2_read_callback,
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/tokens',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'issue_v2_token_enveloped' ),
+				'permission_callback' => array( $this, 'can_manage_v2_tokens' ),
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/tokens',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'list_v2_tokens_enveloped' ),
+				'permission_callback' => array( $this, 'can_manage_v2_tokens' ),
+			)
+		);
+		register_rest_route(
+			REMOTEWP_API_V2_NAMESPACE,
+			'/tokens/(?P<token_id>[A-Za-z0-9_-]+)',
+			array(
+				'methods'             => 'DELETE',
+				'callback'            => array( $this, 'revoke_v2_token_enveloped' ),
+				'permission_callback' => array( $this, 'can_manage_v2_tokens' ),
+			)
+		);
 
 		// /skill is public — SKILL.md contains no secrets (token is already in the prompt).
 		// Making it public prevents IP lockouts when the AI agent reads it on first connect.
@@ -210,6 +334,7 @@ class RemoteWP_FS_API {
 		}
 
 		$content = file_get_contents( $real_path );
+		$redaction = RemoteWP_Data_Redactor::redact( $content );
 
 		$this->logger->log( 'READ', $path );
 
@@ -217,8 +342,245 @@ class RemoteWP_FS_API {
 			'path'      => $path,
 			'size'      => $size,
 			'modified'  => gmdate( 'c', filemtime( $real_path ) ),
-			'content'   => $content,
+			'sha256'    => RemoteWP_Operation_Safety::sha256( $real_path ),
+			'content'   => $redaction['value'],
+			'redacted'  => $redaction['redacted'],
+			'redaction_version' => RemoteWP_Data_Redactor::version(),
 		) );
+	}
+
+	/**
+	 * GET /remotewp/v2/read — Return metadata and a short-lived content handle.
+	 *
+	 * This is additive; v1/read remains available for compatibility.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function read_v2( $request ) {
+		$can = $this->permissions->can( 'read' );
+		if ( is_wp_error( $can ) ) {
+			return $can;
+		}
+
+		$path = $request->get_param( 'path' );
+		if ( empty( $path ) ) {
+			return new WP_Error( 'missing_path', __( 'Path parameter is required.', 'remotewp' ), array( 'status' => 400 ) );
+		}
+		$real_path = $this->permissions->sanitize_path( $path );
+		if ( is_wp_error( $real_path ) ) {
+			return $real_path;
+		}
+		if ( ! is_file( $real_path ) ) {
+			return new WP_Error( 'not_a_file', __( 'Path is not a file.', 'remotewp' ), array( 'status' => 400 ) );
+		}
+		$size = filesize( $real_path );
+		if ( $size > 5 * 1024 * 1024 ) {
+			return new WP_Error( 'file_too_large', __( 'File exceeds the 5MB read limit.', 'remotewp' ), array( 'status' => 413 ) );
+		}
+
+		$content = file_get_contents( $real_path );
+		if ( false === $content ) {
+			return new WP_Error( 'read_error', __( 'Could not read the file.', 'remotewp' ), array( 'status' => 500 ) );
+		}
+		$redaction = RemoteWP_Data_Redactor::redact( $content );
+		$handle    = RemoteWP_Content_Handles::create(
+			$this->logger->get_storage_dir(),
+			$path,
+			$redaction['value'],
+			$redaction['redacted']
+		);
+		if ( is_wp_error( $handle ) ) {
+			return $handle;
+		}
+
+		$this->logger->log( 'READ_V2', $path, 'Content handle issued' );
+		return rest_ensure_response( array(
+			'path'              => $path,
+			'size'              => $size,
+			'modified'          => gmdate( 'c', filemtime( $real_path ) ),
+			'sha256'            => RemoteWP_Operation_Safety::sha256( $real_path ),
+			'content_handle'    => $handle['handle'],
+			'handle_expires_at' => $handle['expires_at'],
+			'redacted'          => $handle['redacted'],
+			'redaction_version' => RemoteWP_Data_Redactor::version(),
+		) );
+	}
+
+	public function read_v2_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( $this->read_v2( $request ), $request );
+	}
+
+	public function list_v2_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( $this->list_dir( $request ), $request );
+	}
+
+	public function read_fs_v2_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( $this->read_v2( $request ), $request );
+	}
+
+	/**
+	 * POST /remotewp/v2/fs/validate — Validate a read path without exposing an absolute path.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function validate_path_v2_enveloped( $request ) {
+		$path = $request->get_param( 'path' );
+		if ( empty( $path ) ) {
+			return RemoteWP_V2_Response::wrap( new WP_Error( 'missing_path', __( 'Path parameter is required.', 'remotewp' ), array( 'status' => 400 ) ), $request );
+		}
+		$real_path = $this->permissions->sanitize_path( $path, true, false );
+		if ( is_wp_error( $real_path ) ) {
+			return RemoteWP_V2_Response::wrap( $real_path, $request );
+		}
+		$base     = realpath( ABSPATH );
+		$relative = $base && 0 === strpos( $real_path, rtrim( $base, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR )
+			? ltrim( str_replace( '\\', '/', substr( $real_path, strlen( $base ) ) ), '/' )
+			: '/';
+		return RemoteWP_V2_Response::wrap(
+			array(
+				'path'      => $path,
+				'canonical' => $relative ?: '/',
+				'exists'    => file_exists( $real_path ),
+				'type'      => is_dir( $real_path ) ? 'directory' : 'file',
+				'readable'  => is_readable( $real_path ),
+			),
+			$request
+		);
+	}
+
+	/**
+	 * GET /remotewp/v2/content/{handle} — Resolve a short-lived content handle.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_content_handle( $request ) {
+		$can = $this->permissions->can( 'read' );
+		if ( is_wp_error( $can ) ) {
+			return $can;
+		}
+		$handle = $request->get_param( 'handle' );
+		$content = RemoteWP_Content_Handles::resolve( $this->logger->get_storage_dir(), $handle );
+		if ( is_wp_error( $content ) ) {
+			return $content;
+		}
+		return rest_ensure_response( array(
+			'path'       => $content['path'],
+			'content'    => $content['content'],
+			'redacted'   => $content['redacted'],
+			'expires_at' => $content['expires_at'],
+		) );
+	}
+
+	public function get_content_handle_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( $this->get_content_handle( $request ), $request );
+	}
+
+	/**
+	 * GET /remotewp/v2/openapi.json — Return the public v2 contract.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response
+	 */
+	public function get_openapi_v2( $request ) {
+		return rest_ensure_response( RemoteWP_V2_Contract::schema() );
+	}
+
+	public function get_context_v2_enveloped( $request ) {
+		$can = $this->permissions->can( 'read' );
+		return RemoteWP_V2_Response::wrap( is_wp_error( $can ) ? $can : RemoteWP_Connection_Context::build(), $request );
+	}
+
+	/**
+	 * GET /remotewp/v2/health — Deterministic, authenticated health checks.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_health_v2_enveloped( $request ) {
+		$storage_dir = $this->logger->get_storage_dir();
+		$backup_dir  = $this->logger->get_backup_dir();
+		$retention_days = (int) get_option( 'remotewp_backup_retention_days', 0 );
+		$max_records    = (int) get_option( 'remotewp_backup_max_records', 0 );
+		$backup_inventory = RemoteWP_Operation_Safety::inspect_backup_directory( $backup_dir, $retention_days, $max_records );
+		$backup_review = RemoteWP_Operation_Safety::get_backup_review( $backup_dir, $retention_days, $max_records, 50 );
+		$backup_inventory['retention_days'] = $retention_days;
+		$backup_inventory['max_records']    = $max_records;
+		$backup_inventory['review_records'] = $backup_review['records'];
+		$backup_inventory['review_truncated'] = $backup_review['truncated'];
+		$checks      = array(
+			'wordpress_root_readable' => is_readable( ABSPATH ),
+			'storage_readable'        => is_readable( $storage_dir ),
+			'storage_writable'        => is_writable( $storage_dir ),
+			'backups_readable'        => is_readable( $backup_dir ),
+			'backups_writable'        => is_writable( $backup_dir ),
+			'backup_manifests_valid' => 0 === (int) $backup_inventory['invalid_count'],
+			'api_v2_loaded'           => defined( 'REMOTEWP_API_V2_NAMESPACE' ),
+		);
+		$healthy = ! in_array( false, $checks, true );
+
+		return RemoteWP_V2_Response::wrap(
+			array(
+				'status'         => $healthy ? 'ok' : 'degraded',
+				'checked_at'     => gmdate( 'c' ),
+				'plugin_version' => defined( 'REMOTEWP_VERSION' ) ? REMOTEWP_VERSION : '',
+				'wp_version'     => get_bloginfo( 'version' ),
+				'php_version'    => PHP_VERSION,
+				'checks'         => $checks,
+				'backup_inventory' => $backup_inventory,
+				'rollout'        => class_exists( 'RemoteWP_Rollout_Policy' ) ? RemoteWP_Rollout_Policy::status() : array(),
+			),
+			$request
+		);
+	}
+
+	/**
+	 * GET /remotewp/v2/status — Envelope the existing read-only status data.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_status_v2_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( $this->get_status( $request ), $request );
+	}
+
+	/**
+	 * GET /remotewp/v2/wp/info — Envelope the existing safe site information.
+	 *
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function get_wp_info_v2_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( $this->get_wp_info_basic( $request ), $request );
+	}
+
+	public function can_manage_v2_tokens() {
+		if ( current_user_can( 'manage_options' ) ) {
+			return true;
+		}
+		return new WP_Error( 'admin_required', __( 'Only a WordPress administrator can manage v2 tokens.', 'remotewp' ), array( 'status' => 403 ) );
+	}
+
+	public function issue_v2_token_enveloped( $request ) {
+		$context = RemoteWP_Connection_Context::build();
+		$scopes  = $request->get_param( 'scopes' );
+		if ( is_string( $scopes ) ) {
+			$scopes = array_filter( array_map( 'trim', explode( ',', $scopes ) ) );
+		}
+		$scopes = empty( $scopes ) ? array( 'files:read' ) : (array) $scopes;
+		$scopes = array_values( array_intersect( $scopes, $context['authorization']['scopes'] ) );
+		$result = RemoteWP_V2_Token_Store::issue( $scopes, $request->get_param( 'label' ), $request->get_param( 'ttl' ) ?: 2592000 );
+		return RemoteWP_V2_Response::wrap( $result, $request );
+	}
+
+	public function list_v2_tokens_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( RemoteWP_V2_Token_Store::list_public(), $request );
+	}
+
+	public function revoke_v2_token_enveloped( $request ) {
+		return RemoteWP_V2_Response::wrap( RemoteWP_V2_Token_Store::revoke( $request->get_param( 'token_id' ) ), $request );
 	}
 
 	/**

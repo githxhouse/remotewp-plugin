@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.7.1
+Stable tag: 3.7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -150,7 +150,7 @@ RemoteWP provides controlled access to supported WordPress files and operations.
 
 == Installation ==
 
-1. Upload the `remotewp` folder to `/wp-content/plugins/`
+1. Upload the emotewp folder to /wp-content/plugins/
 2. Activate the plugin through the 'Plugins' menu
 3. Navigate to **RemoteWP** in the admin sidebar
 4. Copy the auto-generated API token
@@ -195,11 +195,11 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 
 == Changelog ==
 
-= 3.7.1 =
-* Fix: Active 48-hour trials now automatically download and enable the PRO module.
-* Fix: Trial detection now uses the decrypted license key and reports consistent license_tier, is_pro and is_trial values.
-* Fix: WordPress now detects and displays public RemoteWP updates correctly for existing installations.
-* Improvement: Skill delivery and connection handling are more reliable for Free and trial users.
+= 3.7.2 =
+* Release: Aligned the public plugin documentation and metadata with RemoteWP V2.
+* Security: Customers install the public Free/Core package; Pro capabilities are delivered as an encrypted, domain-bound module after license validation.
+* Security: Master/Full ZIP archives are not distributed through the public download flow.
+* Tenant isolation: Agency/domain identity and hand-off data are resolved from the authenticated license and domain assignment.
 
 = 3.6.5 =
 * Security: Changed REST API namespace to helper/v1 to bypass WAF firewalls and server filters.

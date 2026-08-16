@@ -52,6 +52,7 @@ class RemoteWP_Admin {
 
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_post_remotewp_save_settings', array( $this, 'handle_save_settings' ) );
+		add_action( 'admin_post_remotewp_cleanup_backups', array( $this, 'handle_cleanup_backups' ) );
 		add_action( 'admin_post_remotewp_unban_ip', array( $this, 'handle_unban_ip' ) );
 		add_action( 'admin_post_remotewp_unban_all', array( $this, 'handle_unban_all' ) );
 		add_action( 'admin_post_remotewp_regenerate_token', array( $this, 'handle_regenerate_token' ) );
@@ -1101,6 +1102,47 @@ class RemoteWP_Admin {
 								<?php esc_html_e( 'When enabled, API tokens automatically expire after the selected duration. You must regenerate the token from the API Access tab before sharing it with an AI agent. This prevents leaked tokens from being used indefinitely.', 'remotewp' ); ?>
 							</p>
 						</div>
+
+						<div class="remotewp-field">
+							<label for="remotewp_redaction_extra_keys"><?php esc_html_e( 'Additional Redaction Keys', 'remotewp' ); ?></label>
+							<textarea name="remotewp_redaction_extra_keys" id="remotewp_redaction_extra_keys" rows="3"
+							          class="large-text code" placeholder="license_key&#10;webhook_secret"
+							><?php echo esc_textarea( $settings['redaction_extra_keys'] ); ?></textarea>
+							<p class="description">
+								<?php esc_html_e( 'Optional key names to redact from API reads and audit logs. One key per line. The standard secret patterns remain active and cannot be disabled here.', 'remotewp' ); ?>
+							</p>
+						</div>
+
+						<div class="remotewp-field">
+							<label for="remotewp_backup_retention_days"><?php esc_html_e( 'Backup Retention Review (days)', 'remotewp' ); ?></label>
+							<input type="number" name="remotewp_backup_retention_days" id="remotewp_backup_retention_days"
+							       value="<?php echo esc_attr( get_option( 'remotewp_backup_retention_days', 0 ) ); ?>"
+							       min="0" max="3650" class="small-text">
+							<p class="description">
+								<?php esc_html_e( '0 keeps backups eligible by age disabled. This setting only marks candidates for review; it never deletes backups automatically.', 'remotewp' ); ?>
+							</p>
+						</div>
+
+						<div class="remotewp-field">
+							<label>
+								<input type="checkbox" name="remotewp_handoff_consent" value="1"
+								       <?php checked( get_option( 'remotewp_handoff_consent', 0 ), 1 ); ?>>
+								<?php esc_html_e( 'Allow External Technical-Log Handoff', 'remotewp' ); ?>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'When enabled, RemoteWP may transmit redacted technical action logs to the configured handoff service. Disabled by default; no external technical logs are sent while this remains unchecked.', 'remotewp' ); ?>
+							</p>
+						</div>
+
+						<div class="remotewp-field">
+							<label for="remotewp_backup_max_records"><?php esc_html_e( 'Maximum Backup Records for Review', 'remotewp' ); ?></label>
+							<input type="number" name="remotewp_backup_max_records" id="remotewp_backup_max_records"
+							       value="<?php echo esc_attr( get_option( 'remotewp_backup_max_records', 0 ) ); ?>"
+							       min="0" max="100000" class="small-text">
+							<p class="description">
+								<?php esc_html_e( '0 disables count-based review. Older records beyond this limit are reported in v2 health, but are not removed automatically.', 'remotewp' ); ?>
+							</p>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1174,6 +1216,66 @@ class RemoteWP_Admin {
 
 		<?php // Owner Access — Master Password (Full and Pro builds) ?>
 		<?php if ( ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) || ( defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ) ) : ?>
+		<?php
+		$backup_review = RemoteWP_Operation_Safety::get_backup_review(
+			$this->logger->get_backup_dir(),
+			(int) get_option( 'remotewp_backup_retention_days', 0 ),
+			(int) get_option( 'remotewp_backup_max_records', 0 ),
+			50
+		);
+		?>
+		<div class="remotewp-card" style="margin-top: 28px;">
+			<div class="remotewp-card-header">
+				<h2><?php esc_html_e( 'Backup Cleanup Review', 'remotewp' ); ?></h2>
+			</div>
+			<div class="remotewp-card-body">
+				<p class="description">
+					<?php esc_html_e( 'Only verified, manifest-backed backups that match the current retention rules appear here. Cleanup is manual, irreversible, and never runs automatically.', 'remotewp' ); ?>
+				</p>
+				<?php if ( empty( $backup_review['records'] ) ) : ?>
+					<p style="color:#6b7280; font-style:italic;"><?php esc_html_e( 'No eligible backups require review.', 'remotewp' ); ?></p>
+				<?php else : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="remotewp_cleanup_backups">
+						<?php wp_nonce_field( 'remotewp_cleanup_backups' ); ?>
+						<table class="widefat striped" style="margin-bottom:12px;">
+							<thead>
+								<tr>
+									<th style="width:36px;"></th>
+									<th><?php esc_html_e( 'Backup ID', 'remotewp' ); ?></th>
+									<th><?php esc_html_e( 'Operation', 'remotewp' ); ?></th>
+									<th><?php esc_html_e( 'Created', 'remotewp' ); ?></th>
+									<th><?php esc_html_e( 'Reason', 'remotewp' ); ?></th>
+									<th><?php esc_html_e( 'Bytes', 'remotewp' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $backup_review['records'] as $record ) : ?>
+									<?php if ( empty( $record['backup_id'] ) ) { continue; } ?>
+									<tr>
+										<td><input type="checkbox" name="backup_ids[]" value="<?php echo esc_attr( $record['backup_id'] ); ?>"></td>
+										<td><code><?php echo esc_html( $record['backup_id'] ); ?></code></td>
+										<td><?php echo esc_html( $record['operation'] ); ?></td>
+										<td><?php echo esc_html( $record['created_at'] ); ?></td>
+										<td><?php echo esc_html( implode( ', ', $record['eligibility_reasons'] ) ); ?></td>
+										<td><?php echo esc_html( number_format_i18n( $record['bytes'] ) ); ?></td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+						<label style="display:block; margin:12px 0; color:#b91c1c;">
+							<input type="checkbox" name="cleanup_confirm" value="1">
+							<?php esc_html_e( 'I understand that the selected verified backups cannot be restored after cleanup.', 'remotewp' ); ?>
+						</label>
+						<button type="submit" class="button" style="color:#b91c1c; border-color:#b91c1c;">
+							<?php esc_html_e( 'Clean Selected Backups', 'remotewp' ); ?>
+						</button>
+					</form>
+				<?php endif; ?>
+			</div>
+		</div>
+
+		<?php // Owner Access ?>
 		<div class="remotewp-card" style="margin-top: 28px;">
 			<div class="remotewp-card-header" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));">
 				<h2><span class="dashicons dashicons-shield-alt" style="margin-right:6px; color: #ef4444;"></span><?php esc_html_e( 'Owner Access Lock', 'remotewp' ); ?></h2>
@@ -1346,6 +1448,10 @@ class RemoteWP_Admin {
 			'remotewp_ip_whitelist'      => 'sanitize_textarea_field',
 			'remotewp_path_restrictions' => 'sanitize_textarea_field',
 			'remotewp_token_ttl'         => 'absint',
+			'remotewp_redaction_extra_keys' => 'sanitize_textarea_field',
+			'remotewp_handoff_consent' => 'absint',
+			'remotewp_backup_retention_days' => 'absint',
+			'remotewp_backup_max_records' => 'absint',
 		);
 
 		foreach ( $fields as $key => $sanitizer ) {
@@ -1357,9 +1463,58 @@ class RemoteWP_Admin {
 		// Checkbox: trust_proxy (unchecked = not in POST)
 		update_option( 'remotewp_trust_proxy', isset( $_POST['remotewp_trust_proxy'] ) ? 1 : 0 );
 
+		// External technical-log handoff is an explicit, default-off consent.
+		update_option( 'remotewp_handoff_consent', isset( $_POST['remotewp_handoff_consent'] ) ? 1 : 0 );
+
 		$this->logger->log( 'SETTINGS_UPDATED', '', 'Settings saved via admin panel' );
 
 		wp_redirect( admin_url( 'admin.php?page=remotewp&tab=settings&updated=true' ) );
+		exit;
+	}
+
+	/**
+	 * Handle an explicitly approved manual cleanup of eligible backups.
+	 */
+	public function handle_cleanup_backups() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'remotewp' ) );
+		}
+
+		check_admin_referer( 'remotewp_cleanup_backups' );
+		$ids = isset( $_POST['backup_ids'] ) && is_array( $_POST['backup_ids'] ) ? array_slice( array_map( 'sanitize_text_field', wp_unslash( $_POST['backup_ids'] ) ), 0, 50 ) : array();
+		if ( empty( $ids ) || empty( $_POST['cleanup_confirm'] ) ) {
+			wp_safe_redirect( admin_url( 'admin.php?page=remotewp&tab=settings&backup_cleanup=none' ) );
+			exit;
+		}
+
+		$backup_dir = $this->logger->get_backup_dir();
+		$retention_days = (int) get_option( 'remotewp_backup_retention_days', 0 );
+		$max_records = (int) get_option( 'remotewp_backup_max_records', 0 );
+		$cleaned = 0;
+		$failed = 0;
+		foreach ( array_unique( $ids ) as $backup_id ) {
+			$result = RemoteWP_Operation_Safety::purge_eligible_backup( $backup_dir, $backup_id, $retention_days, $max_records );
+			if ( is_wp_error( $result ) ) {
+				$failed++;
+				$this->logger->log( 'BACKUP_CLEANUP', $backup_id, 'Manual cleanup rejected: ' . $result->get_error_code(), 'error' );
+				continue;
+			}
+			$cleaned++;
+			$this->logger->log( 'BACKUP_CLEANUP', $backup_id, 'Manual cleanup approved and completed' );
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page' => 'remotewp',
+					'tab' => 'settings',
+					'backup_cleanup' => 'done',
+					'cleaned' => $cleaned,
+					'failed' => $failed,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
 		exit;
 	}
 
@@ -1600,6 +1755,18 @@ class RemoteWP_Admin {
 			echo '<div class="remotewp-notice remotewp-notice-success"><p>' . esc_html__( 'Settings saved successfully.', 'remotewp' ) . '</p></div>';
 		}
 
+		if ( isset( $_GET['backup_cleanup'] ) ) {
+			$cleanup_state = sanitize_key( wp_unslash( $_GET['backup_cleanup'] ) );
+			if ( 'done' === $cleanup_state ) {
+				$cleaned = isset( $_GET['cleaned'] ) ? absint( $_GET['cleaned'] ) : 0;
+				$failed = isset( $_GET['failed'] ) ? absint( $_GET['failed'] ) : 0;
+				$class = $failed > 0 ? 'warning' : 'success';
+				echo '<div class="remotewp-notice remotewp-notice-' . esc_attr( $class ) . '"><p>' . esc_html( sprintf( __( 'Backup cleanup completed: %1$d removed, %2$d rejected.', 'remotewp' ), $cleaned, $failed ) ) . '</p></div>';
+			} elseif ( 'none' === $cleanup_state ) {
+				echo '<div class="remotewp-notice remotewp-notice-warning"><p>' . esc_html__( 'Select at least one backup and confirm the irreversible cleanup action.', 'remotewp' ) . '</p></div>';
+			}
+		}
+
 		if ( isset( $_GET['token_regenerated'] ) ) {
 			echo '<div class="remotewp-notice remotewp-notice-warning"><p>' . esc_html__( 'API token regenerated. Update the token in all connected agents.', 'remotewp' ) . '</p></div>';
 		}
@@ -1648,6 +1815,8 @@ class RemoteWP_Admin {
 			'ip_whitelist'      => get_option( 'remotewp_ip_whitelist', '' ),
 			'path_restrictions' => get_option( 'remotewp_path_restrictions', '' ),
 			'trust_proxy'       => get_option( 'remotewp_trust_proxy', false ),
+			'redaction_extra_keys' => get_option( 'remotewp_redaction_extra_keys', '' ),
+			'handoff_consent' => get_option( 'remotewp_handoff_consent', false ),
 		);
 	}
 

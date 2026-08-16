@@ -3,7 +3,7 @@
  * Plugin Name: RemoteWP
  * Plugin URI:  https://remotewp.dev
  * Description: The AI-Ready WordPress Bridge. Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
- * Version:     3.7.1
+ * Version:     3.7.2
  * Author:      X-HOUSE SRL
  * Author URI:  https://xhouse.ro
  * License:     GPL-2.0-or-later
@@ -39,11 +39,12 @@ if ( version_compare( get_bloginfo( 'version' ), REMOTEWP_MIN_WP_VERSION, '<' ) 
 }
 
 // Plugin constants
-define( 'REMOTEWP_VERSION', '3.7.1' );
+define( 'REMOTEWP_VERSION', '3.7.2' );
 define( 'REMOTEWP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 define( 'REMOTEWP_API_NAMESPACE', 'helper/v1' );
+define( 'REMOTEWP_API_V2_NAMESPACE', 'remotewp/v2' );
 
 
 // Open Core: detect if Pro module is installed
@@ -96,6 +97,18 @@ function remotewp_load_classes() {
 	require_once $includes . 'class-remotewp-rate-limiter.php';
 	require_once $includes . 'class-remotewp-permissions.php';
 	require_once $includes . 'class-remotewp-license.php';
+	require_once $includes . 'class-remotewp-operation-safety.php';
+	require_once $includes . 'class-remotewp-operation-coordinator.php';
+	require_once $includes . 'class-remotewp-data-redactor.php';
+	require_once $includes . 'class-remotewp-content-handles.php';
+	require_once $includes . 'class-remotewp-patch-engine.php';
+	require_once $includes . 'class-remotewp-v2-response.php';
+	require_once $includes . 'class-remotewp-v2-contract.php';
+	require_once $includes . 'class-remotewp-connection-context.php';
+	require_once $includes . 'class-remotewp-v2-token-store.php';
+	require_once $includes . 'class-remotewp-rollout-policy.php';
+	require_once $includes . 'class-remotewp-verification-manifest.php';
+	require_once $includes . 'class-remotewp-path-policy.php';
 	require_once $includes . 'class-remotewp-auth.php';
 	require_once $includes . 'class-remotewp-fs-api.php';
 	require_once $includes . 'class-remotewp-admin.php';
@@ -120,11 +133,16 @@ function remotewp_load_classes() {
 function remotewp_init() {
 	remotewp_load_classes();
 
+	// Correlate every RemoteWP REST response with the caller's request. This
+	// also covers authentication/permission failures that happen before a
+	// route handler can build the v2 response envelope.
+	add_filter( 'rest_post_dispatch', 'remotewp_attach_request_id_header', 10, 3 );
+
 	$logger       = new RemoteWP_Logger();
 	$rate_limiter = new RemoteWP_Rate_Limiter();
 	$permissions  = new RemoteWP_Permissions();
 	$license      = new RemoteWP_License();
-	$auth         = new RemoteWP_Auth( $rate_limiter, $logger );
+	$auth         = new RemoteWP_Auth( $rate_limiter, $logger, $permissions );
 
 	// Core free endpoints (always active)
 	new RemoteWP_FS_API( $auth, $permissions, $logger, $license );
@@ -152,6 +170,44 @@ function remotewp_init() {
 	}
 }
 add_action( 'plugins_loaded', 'remotewp_init' );
+
+/**
+ * Add a safe correlation header to RemoteWP REST responses.
+ *
+ * A web application firewall may reject a request before WordPress runs; in
+ * that case no PHP response header is possible and the WAF audit log remains
+ * the source of truth. If WordPress receives the request, this header gives
+ * the agent one value to use when matching site logs and the central log.
+ *
+ * @param WP_HTTP_Response|WP_Error $response REST response.
+ * @param WP_REST_Server            $server   REST server.
+ * @param WP_REST_Request           $request  Incoming request.
+ * @return WP_HTTP_Response|WP_Error
+ */
+function remotewp_attach_request_id_header( $response, $server, $request ) {
+	if ( ! $request instanceof WP_REST_Request ) {
+		return $response;
+	}
+
+	$route    = (string) $request->get_route();
+	$prefixes = array(
+		'/' . trim( REMOTEWP_API_NAMESPACE, '/' ),
+		'/' . trim( REMOTEWP_API_V2_NAMESPACE, '/' ),
+	);
+	$is_remote_wp_route = false;
+	foreach ( $prefixes as $prefix ) {
+		if ( $route === $prefix || 0 === strpos( $route, $prefix . '/' ) ) {
+			$is_remote_wp_route = true;
+			break;
+		}
+	}
+
+	if ( ! $is_remote_wp_route ) {
+		return $response;
+	}
+
+	return RemoteWP_V2_Response::attach_request_id_header( $response, $request );
+}
 
 /**
  * Activation: generate initial token and set default options.
@@ -192,6 +248,13 @@ function remotewp_activate() {
 		'remotewp_token_ttl'           => 0,  // 0 = never expire (backward compatible)
 		'remotewp_token_created_at'    => time(),
 		'remotewp_master_password'     => '',  // Owner lock: empty = disabled (Full build only)
+		'remotewp_safety_kill_switch'  => 0,
+		'remotewp_v2_mutations_enabled'=> 1,
+		'remotewp_v2_mutation_allowlist' => '',
+		'remotewp_redaction_extra_keys' => '',
+		'remotewp_handoff_consent' => 0,
+		'remotewp_backup_retention_days' => 0,
+		'remotewp_backup_max_records' => 0,
 	);
 
 	foreach ( $defaults as $key => $value ) {
@@ -213,8 +276,9 @@ function remotewp_activate() {
 		$license->auto_activate( $internal_key );
 	}
 
-	// Auto-whitelist endpoints in Wordfence if installed
-	remotewp_auto_whitelist_wordfence();
+	// Firewall configuration remains administrator-owned. RemoteWP exposes
+	// request IDs and safe diagnostics, but never changes Wordfence/ModSecurity
+	// rules automatically during activation.
 
 	// Schedule daily license verification (only for Pro builds)
 	if ( REMOTEWP_IS_PRO && ! wp_next_scheduled( 'remotewp_daily_license_check' ) ) {
@@ -222,98 +286,6 @@ function remotewp_activate() {
 	}
 }
 register_activation_hook( __FILE__, 'remotewp_activate' );
-
-/**
- * Auto-whitelist RemoteWP REST API routes in Wordfence firewall if Wordfence is present.
- */
-function remotewp_auto_whitelist_wordfence() {
-	if ( ! class_exists( 'wfConfig' ) && ! class_exists( 'wordfence' ) ) {
-		return;
-	}
-
-	try {
-		$endpoints = array(
-			'/wp-json/remotewp/v1/',
-			'/wp-json/remotewp-license/v1/',
-			'/wp-json/helper/v1/',
-		);
-
-		if ( class_exists( 'wfConfig' ) ) {
-			$existing_raw = wfConfig::get( 'whitelistedURLParams', '[]' );
-			$existing     = is_string( $existing_raw ) ? json_decode( $existing_raw, true ) : (array) $existing_raw;
-			if ( ! is_array( $existing ) ) {
-				$existing = array();
-			}
-
-			$modified = false;
-			foreach ( $endpoints as $ep ) {
-				$found = false;
-				foreach ( $existing as $rule ) {
-					if ( isset( $rule['url'] ) && false !== strpos( $rule['url'], $ep ) ) {
-						$found = true;
-						break;
-					}
-				}
-				if ( ! $found ) {
-					$existing[] = array(
-						'url'             => $ep,
-						'param'           => '*',
-						'whitelistConfig' => 'all',
-						'description'     => 'RemoteWP REST API Bridge (Auto-Whitelisted)',
-						'source'          => 'remotewp',
-					);
-					$modified = true;
-				}
-			}
-
-			if ( $modified ) {
-				wfConfig::set( 'whitelistedURLParams', json_encode( $existing ) );
-			}
-		} else {
-			global $wpdb;
-			$table = $wpdb->prefix . 'wfconfig';
-			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
-				$existing_raw = $wpdb->get_var( $wpdb->prepare( "SELECT val FROM {$table} WHERE name = %s", 'whitelistedURLParams' ) );
-				$existing     = ! empty( $existing_raw ) ? json_decode( $existing_raw, true ) : array();
-				if ( ! is_array( $existing ) ) {
-					$existing = array();
-				}
-
-				$modified = false;
-				foreach ( $endpoints as $ep ) {
-					$found = false;
-					foreach ( $existing as $rule ) {
-						if ( isset( $rule['url'] ) && false !== strpos( $rule['url'], $ep ) ) {
-							$found = true;
-							break;
-						}
-					}
-					if ( ! $found ) {
-						$existing[] = array(
-							'url'             => $ep,
-							'param'           => '*',
-							'whitelistConfig' => 'all',
-							'description'     => 'RemoteWP REST API Bridge (Auto-Whitelisted)',
-							'source'          => 'remotewp',
-						);
-						$modified = true;
-					}
-				}
-
-				if ( $modified ) {
-					$wpdb->query( $wpdb->prepare(
-						"INSERT INTO {$table} (name, val, autoload) VALUES (%s, %s, 'yes') ON DUPLICATE KEY UPDATE val = %s",
-						'whitelistedURLParams',
-						json_encode( $existing ),
-						json_encode( $existing )
-					) );
-				}
-			}
-		}
-	} catch ( Exception $e ) {
-		// Silent catch if Wordfence is not present or in unknown state
-	}
-}
 
 /**
  * Deactivation: cleanup transients.

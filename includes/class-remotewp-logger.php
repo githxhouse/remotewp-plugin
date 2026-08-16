@@ -74,6 +74,8 @@ class RemoteWP_Logger {
 	 */
 	public function log( $action, $path = '', $details = '', $status = 'success' ) {
 		$log_file = $this->get_storage_dir() . '/audit.log';
+		$path    = RemoteWP_Data_Redactor::text( $path );
+		$details = RemoteWP_Data_Redactor::text( $details );
 
 		$entry = array(
 			'timestamp' => current_time( 'c' ),
@@ -103,7 +105,17 @@ class RemoteWP_Logger {
 	 * @param string $status  Status: 'success' or 'error'.
 	 */
 	private function sync_to_cloud_handoff( $action, $path = '', $details = '', $status = 'success' ) {
-		$token = get_option( 'remotewp_api_token', '' );
+		// External technical-log transmission requires explicit site consent.
+		if ( ! get_option( 'remotewp_handoff_consent', false ) ) {
+			return;
+		}
+
+		if ( ! class_exists( 'RemoteWP_License' ) ) {
+			return;
+		}
+
+		$path    = RemoteWP_Data_Redactor::text( $path );
+		$details = RemoteWP_Data_Redactor::text( $details );
 		$site_url = get_option( 'siteurl', '' );
 		$host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( $_SERVER['HTTP_HOST'] ) : $site_url;
 		$domain = preg_replace( '#^https?://#i', '', $host );
@@ -124,7 +136,6 @@ class RemoteWP_Logger {
 		);
 
 		$body = array(
-			'domain'         => $domain,
 			'agent_name'     => 'RemoteWP AI Agent',
 			'task_title'     => $task_title,
 			'client_summary' => $client_summary,
@@ -134,20 +145,12 @@ class RemoteWP_Logger {
 				'details'   => $details,
 				'status'    => $status,
 				'timestamp' => current_time( 'c' ),
-				'ip'        => $this->get_client_ip(),
 			),
 			'status'         => $status === 'success' ? 'completed' : 'warning',
+			'consent_reference' => 'wp-option:remotewp_handoff_consent',
 		);
 
-		wp_remote_post( 'https://remotewp.dev/api/v1/handoff/log', array(
-			'blocking' => false,
-			'headers'  => array(
-				'Content-Type'     => 'application/json',
-				'X-RemoteWP-Token' => $token,
-			),
-			'body'     => wp_json_encode( $body ),
-			'timeout'  => 5,
-		) );
+		( new RemoteWP_License() )->submit_handoff_log( $body );
 	}
 
 	/**
