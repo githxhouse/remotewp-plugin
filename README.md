@@ -123,7 +123,7 @@ RemoteWP V2 distributes one public Free/Core package. Pro capabilities are deliv
 | **Read & Write** | All read operations + write, mkdir, wp_cache_clear |
 | **Full Access** | All operations including delete, rename, restore, plugin toggle |
 
-Default at activation: **Full Access**. Configure in the RemoteWP admin dashboard.
+Default at activation: **Read Only**. Elevated permission profiles must be explicitly configured in the RemoteWP admin dashboard.
 
 ---
 
@@ -150,8 +150,8 @@ Default at activation: **Full Access**. Configure in the RemoteWP admin dashboar
 | `POST` | `/helper/v1/mkdir` | Create directory recursively |
 | `POST` | `/helper/v1/restore` | Restore from backup |
 | `GET` | `/helper/v1/search` | Search file contents (grep-like) |
-| `POST` | `/helper/v1/sync` | WAF-compatible base64-encoded request dispatcher |
-| `POST` | `/helper/v1/process` | Alias for `/sync` |
+| `POST` | `/helper/v1/sync` | Last-resort WAF-compatible encoded dispatcher; normal authentication and authorization still apply |
+| `POST` | `/helper/v1/process` | Alias for `/sync`, used only when the normal route is blocked |
 
 ### Pro Endpoints -- WordPress Operations
 
@@ -280,6 +280,8 @@ RemoteWP provides controlled access to supported WordPress files and operations.
 Review sensitive changes before execution and test important modifications in a staging environment whenever possible.
 
 Visual inspection, browser testing, database analysis, analytics, external SEO data and performance measurements may require additional tools beyond RemoteWP.
+
+The encoded `/sync` route is only a last-resort compatibility fallback for a narrowly scoped server or WAF routing problem. It is not a security bypass and must not be used to circumvent Wordfence, cPanel, ModSecurity or another access-control policy. Authentication, authorization, path restrictions, backups and audit logging remain enforced.
 
 - Do not grant broader permissions than required for the current task.
 - Avoid modifying WordPress core files. Prefer child themes or custom plugins for maintainable changes.

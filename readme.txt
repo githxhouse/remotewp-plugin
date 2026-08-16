@@ -106,8 +106,8 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 * POST /mkdir — Create new directories
 * POST /restore — Restore from automatic backup
 * GET /search — Search file contents (grep-like)
-* POST /sync — WAF-compatible base64-encoded request dispatcher
-* POST /process — Alias for /sync
+* POST /sync — Last-resort WAF-compatible encoded dispatcher; authentication and authorization still apply
+* POST /process — Alias for /sync, used only when the normal route is blocked
 
 **WordPress Operations API (Pro)**
 
@@ -164,12 +164,14 @@ RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate
 
 = Can I limit what the API can do? =
 
-Yes. RemoteWP offers three permission profiles:
+Yes. RemoteWP offers three permission profiles. New installations start in Read Only mode:
 - **Read Only** — Only list, read, search and WordPress info operations
 - **Read & Write** — Read plus write and create operations
 - **Full Access** — All operations including delete and plugin management
 
 You can also restrict access to specific directories using path restrictions.
+
+The encoded /sync route is only a last-resort compatibility fallback for a narrowly scoped server or WAF routing problem. It is not a security bypass and must not be used to circumvent Wordfence, cPanel, ModSecurity or another access-control policy. Authentication, authorization, path restrictions, backups and audit logging remain enforced.
 
 = Which AI agents can I use? =
 
