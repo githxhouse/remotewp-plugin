@@ -195,6 +195,12 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 
 == Changelog ==
 
+= 3.7.2 =
+* Release: Aligned the public plugin documentation and metadata with RemoteWP V2.
+* Security: Customers install the public Free/Core package; Pro capabilities are delivered as an encrypted, domain-bound module after license validation.
+* Security: Master/Full ZIP archives are not distributed through the public download flow.
+* Tenant isolation: Agency/domain identity and hand-off data are resolved from the authenticated license and domain assignment.
+
 = 3.6.5 =
 * Security: Changed REST API namespace to helper/v1 to bypass WAF firewalls and server filters.
 * Fix: Resolve class loading issue on activation causing Class 'RemoteWP_License' not found fatal error.

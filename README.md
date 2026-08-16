@@ -3,7 +3,7 @@
 [![License: GPL v2+](https://img.shields.io/badge/License-GPLv2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8+-21759b.svg)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4+-777bb4.svg)](https://php.net)
-[![Version](https://img.shields.io/badge/Version-3.7.0-6366f1.svg)](https://remotewp.dev)
+[![Version](https://img.shields.io/badge/Version-3.7.2-6366f1.svg)](https://remotewp.dev)
 
 **Remote WP securely connects compatible AI agents like Claude, Gemini, and Codex to a WordPress website through a controlled REST API.**
 
@@ -15,9 +15,11 @@
 
 ---
 
-## AI Agent Skills & Dynamic Stack Resolution (v3.7.0)
+## AI Agent Skills & Dynamic Stack Resolution (v3.7.2)
 
 RemoteWP includes an intelligent **Cloud Skill Resolver** (`GET /wp-json/remotewp-license/v1/skills/resolve`) that dynamically inspects your site's active technology stack (WooCommerce, Elementor, WPBakery, RankMath, Yoast, SEOPress) and delivers pre-formatted, tailored AI Skill Packs directly to connecting AI agents (Claude, ChatGPT, Gemini, Cursor).
+
+RemoteWP V2 distributes one public Free/Core package. Pro capabilities are delivered as an encrypted, domain-bound module after the installed plugin validates an active license. Master/Full ZIP archives are not distributed to customers.
 
 ### Included Skill Modules:
 - **`remotewp-bridge`**: Core AI Agent Operations, Site DNA, Ultra-Fast Onboarding Audit (<2s single-call status response), and Action Menu.

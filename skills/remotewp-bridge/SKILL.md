@@ -62,7 +62,7 @@ Never infer the agency executor or platform operator from the Terms and Conditio
   "sites": [
     {
       "domain": "example.com",
-      "plugin_version": "3.7.0",
+      "plugin_version": "3.7.2",
       "activated_at": "2026-08-01T10:00:00.000Z",
       "last_active_at": "2026-08-12T14:00:00.000Z"
     }
