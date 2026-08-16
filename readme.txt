@@ -164,7 +164,7 @@ RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate
 
 = Can I limit what the API can do? =
 
-Yes. RemoteWP offers three permission profiles. New installations start in Read Only mode:
+Yes. RemoteWP offers three permission profiles. For compatibility with existing installations, the current plugin activation default is Full Access. Review the setting immediately after installation and select the narrowest profile required:
 - **Read Only** — Only list, read, search and WordPress info operations
 - **Read & Write** — Read plus write and create operations
 - **Full Access** — All operations including delete and plugin management
