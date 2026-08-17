@@ -105,8 +105,8 @@ RemoteWP V2 distributes one public Free/Core package. Pro capabilities are deliv
 - **Protected Files**: `wp-config.php`, `.env`, `.htaccess`, `.git`, `.user.ini` always blocked
 - **Token TTL**: Configurable (default: `0` = never expires)
 - **Path Validation**: `realpath()` + `strpos()` check against ABSPATH
-- **Write Restriction**: Filesystem write operations restricted to `wp-content/`
-- **Dangerous Extensions**: `php`, `phtml`, `php5-8`, `phar`, `cgi`, `sh`, `py`, `rb`, `exe` blocked by default
+- **Controlled Writes**: Approved site file changes run through RemoteWP with validation and operation logs
+- **Sensitive File Approval**: PHP/executable file mutations require an explicit extra approval, an approval note, automatic backup and restore metadata
 - **Auto-Backup**: Timestamped backup created before every write/delete/rename
 - **Backup Storage**: Randomized directory inside `wp-content/uploads/`, protected by `.htaccess` and `index.php`
 - **Audit Log**: JSON-based, 500 entries max, auto-rotated
@@ -127,58 +127,68 @@ Default at activation: **Full Access**. Configure in the RemoteWP admin dashboar
 
 ---
 
-## API Endpoints
+## RemoteWP V2 API Endpoints
 
-### Free Endpoints
+The V2 namespace is the canonical API for new AI agent connections. The legacy `/helper/v1/` namespace remains available for backward compatibility and WAF-friendly fallback, but new agents should start with `/remotewp/v2/connect`.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/helper/v1/status` | Plugin status, permission level, PHP/WP versions |
-| `GET` | `/helper/v1/list` | List directory contents with metadata |
-| `GET` | `/helper/v1/read` | Read file content (up to 5MB) |
-| `GET` | `/helper/v1/skill` | Site-specific AI Agent Skill Pack (SKILL.md with site vars pre-filled) |
-| `GET` | `/helper/v1/instructions` | Legacy AI instructions |
-| `GET` | `/helper/v1/wp/info` | Basic site info (theme, WP version) |
-
-### Pro Endpoints -- Filesystem
+### V2 Startup and Context
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/helper/v1/write` | Write/create file with auto-backup |
-| `POST` | `/helper/v1/delete` | Delete file or directory with auto-backup |
-| `POST` | `/helper/v1/rename` | Rename file or directory with auto-backup |
-| `POST` | `/helper/v1/mkdir` | Create directory recursively |
-| `POST` | `/helper/v1/restore` | Restore from backup |
-| `GET` | `/helper/v1/search` | Search file contents (grep-like) |
-| `POST` | `/helper/v1/sync` | WAF-compatible base64-encoded request dispatcher |
-| `POST` | `/helper/v1/process` | Alias for `/sync` |
+| `GET` | `/remotewp/v2/connect` | Fast startup payload with site context, V2 endpoints and operating rules |
+| `GET` | `/remotewp/v2/context` | Authenticated site identity, capability and tenant context |
+| `GET` | `/remotewp/v2/health` | Storage, backup, rollout and API health checks |
+| `GET` | `/remotewp/v2/openapi.json` | Machine-readable V2 contract |
+| `GET` | `/remotewp/v2/skill` | Full V2 AI Agent Skill Pack when detailed rules are needed |
 
-### Pro Endpoints -- WordPress Operations
+### V2 Filesystem Operations
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/helper/v1/wp/info` | Full site info: theme, plugins summary, WP version, multisite |
-| `GET` | `/helper/v1/wp/plugins` | Full plugin list with activation status |
-| `POST` | `/helper/v1/wp/plugin/toggle` | Activate or deactivate plugins |
-| `GET` | `/helper/v1/wp/options` | Read whitelisted WordPress options |
-| `POST` | `/helper/v1/wp/cache-clear` | Clear all supported caches and transients |
+| `GET` | `/remotewp/v2/fs/list` | List directory contents with metadata |
+| `GET` | `/remotewp/v2/fs/read` | Read metadata and receive a short-lived content handle |
+| `GET` | `/remotewp/v2/content/{handle}` | Resolve short-lived file content handles |
+| `GET` | `/remotewp/v2/fs/search` | Search file contents |
+| `POST` | `/remotewp/v2/fs/validate` | Validate a path before changing it |
+| `POST` | `/remotewp/v2/fs/write` | Write/create file with auto-backup, expected hash and approval flow |
+| `POST` | `/remotewp/v2/fs/patch` | Apply additive patch operations with expected SHA-256 |
+| `POST` | `/remotewp/v2/fs/delete` | Delete with auto-backup and approval flow when sensitive |
+| `POST` | `/remotewp/v2/fs/rename` | Rename with auto-backup and approval flow when sensitive |
+| `POST` | `/remotewp/v2/fs/restore` | Restore from backup with restore metadata |
+| `GET` | `/remotewp/v2/operations/{operation_id}` | Inspect mutation phases, backup IDs and verification status |
+
+### V2 WordPress Operations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/remotewp/v2/wp/info` | Site information, theme and WordPress version |
+| `GET` | `/remotewp/v2/status` | Plugin status, permission level and version |
+| `POST` | `/helper/v1/sync` | Legacy WAF-compatible dispatcher retained as fallback |
+| `POST` | `/helper/v1/process` | Legacy alias for `/sync` |
 
 ---
 
 ## Quick Start
 
 ```bash
-# Check plugin status
-curl -H "X-RemoteWP-Token: YOUR_TOKEN"   https://yoursite.com/wp-json/helper/v1/status
+# Fast V2 startup payload for an AI agent
+curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
+  https://yoursite.com/wp-json/remotewp/v2/connect
 
-# List theme files
-curl -H "X-RemoteWP-Token: YOUR_TOKEN"   "https://yoursite.com/wp-json/helper/v1/list?path=wp-content/themes/mytheme"
+# Check V2 health before mutations
+curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
+  https://yoursite.com/wp-json/remotewp/v2/health
 
-# Read a file
-curl -H "X-RemoteWP-Token: YOUR_TOKEN"   "https://yoursite.com/wp-json/helper/v1/read?path=wp-content/themes/mytheme/style.css"
+# Read a theme file through V2
+curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
+  "https://yoursite.com/wp-json/remotewp/v2/fs/read?path=wp-content/themes/mytheme/style.css"
 
-# Write a file (Pro)
-curl -X POST   -H "X-RemoteWP-Token: YOUR_TOKEN"   -H "Content-Type: application/json"   -d '{"path":"wp-content/themes/mytheme/custom.css","content":"/* styles */"}'   https://yoursite.com/wp-json/helper/v1/write
+# Write after review, with automatic backup
+curl -X POST \
+  -H "X-RemoteWP-Token: YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"path":"wp-content/themes/mytheme/custom.css","content":"/* styles */","expected_sha256":"CURRENT_FILE_SHA256"}' \
+  https://yoursite.com/wp-json/remotewp/v2/fs/write
 ```
 
 ---
@@ -222,15 +232,16 @@ RemoteWP does not include a native plugin or connector for any specific AI platf
 
 ## AI Agent Skill Pack
 
-RemoteWP includes a built-in **AI Agent Skill Pack** at `skills/remotewp-bridge/SKILL.md`.
+RemoteWP includes a built-in **AI Agent Skill Pack** and a fast V2 connection payload.
 
-**Retrieve with your site details pre-filled:**
+**Start with the compact V2 connection payload:**
 
 ```bash
-curl -H "X-RemoteWP-Token: YOUR_TOKEN"   https://yoursite.com/wp-json/helper/v1/skill
+curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
+  https://yoursite.com/wp-json/remotewp/v2/connect
 ```
 
-Feed the returned content to your AI agent as a system prompt or custom instruction set.
+Use `/wp-json/remotewp/v2/skill` only when the agent needs the full detailed operating rules. The legacy `/wp-json/helper/v1/skill` endpoint remains available for older connectors.
 
 ---
 
@@ -249,12 +260,8 @@ remotewp/
 |   |-- class-remotewp-license.php        # License management + tier gating
 |   |-- class-remotewp-logger.php         # Audit logging (JSON, 500 entries) + auto-backup
 |   |-- class-remotewp-admin.php          # Admin dashboard
-|   |-- class-remotewp-pro-loader.php     # Pro module loader
+|   |-- class-remotewp-pro-loader.php     # Dynamic encrypted Pro module loader
 |   `-- class-remotewp-updater.php        # Auto-updater
-|-- pro/
-|   |-- class-remotewp-fs-api-pro.php     # Pro filesystem endpoints
-|   |-- class-remotewp-wp-api.php         # Pro WordPress operations endpoints
-|   `-- class-remotewp-admin-pro.php      # Pro admin enhancements
 |-- skills/
 |   `-- remotewp-bridge/
 |       `-- SKILL.md                      # AI Agent Skill Pack
@@ -262,6 +269,8 @@ remotewp/
     |-- css/admin.css
     `-- js/admin.js
 ```
+
+The public repository and public ZIP do not distribute a Pro, Full or Master package. Pro capability code is served dynamically by the RemoteWP license server after license and domain validation.
 
 ---
 
