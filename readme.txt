@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.7.3
+Stable tag: 3.7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -182,6 +182,11 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 
 == Changelog ==
 
+= 3.7.4 =
+* Fix: Clarified central handoff authentication. `Authorization: Bearer` must use the RemoteWP Master/Agency license key from the RemoteWP account/dashboard, not the WordPress site token.
+* Fix: Updated the AI Agent Skill Pack so agents ask the user/admin for the Master/Agency key when needed, never search site files for it, and never save it in local handoff reports.
+* Docs: Aligned GitHub and plugin readme text with the RemoteWP V2 handoff and single-package distribution model.
+
 = 3.7.3 =
 * Fix: Corrected update-check version detection so WordPress sites on 3.7.2 receive the 3.7.3 update.
 * Fix: Corrected wp-content path detection on hosting setups where ABSPATH and WP_CONTENT_DIR normalize differently, preventing false core_modification_blocked errors for theme/plugin files such as child-theme functions.php.
@@ -214,6 +219,9 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 * Initial internal release.
 
 == Upgrade Notice ==
+
+= 3.7.4 =
+Important V2 skill update. Clarifies that central handoff uses the RemoteWP Master/Agency license key, not the WordPress site token, and prevents agents from falling back incorrectly.
 
 = 3.7.3 =
 Important V2 update. Fixes public update delivery, improves V2 startup, corrects false path-policy blocks and adds explicit approval flow for sensitive executable site file changes.

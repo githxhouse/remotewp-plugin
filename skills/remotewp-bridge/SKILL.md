@@ -89,7 +89,7 @@ Never infer the agency executor or platform operator from the Terms and Conditio
   "sites": [
     {
       "domain": "example.com",
-      "plugin_version": "3.7.3",
+      "plugin_version": "3.7.4",
       "activated_at": "2026-08-01T10:00:00.000Z",
       "last_active_at": "2026-08-12T14:00:00.000Z"
     }
@@ -408,19 +408,28 @@ See `references/woocommerce.md` for the complete WooCommerce workflow.
 2. Review installed plugins and update status: `GET /wp/plugins` `[PRO]`
 3. Prepare a maintenance summary report.
 4. Perform approved write operations only after the review is confirmed.
-5. **RECORD HAND-OFF LOG**: Only after explicit site/user consent and redaction, call `POST https://remotewp.dev/api/v1/handoff/log` with the authenticated agency license in `Authorization: Bearer <license-key>`. Include the current `site_id`; the server resolves the agency and assignment and never accepts a platform/operator fallback.
+5. **RECORD HAND-OFF LOG**: Only after explicit site/user consent and redaction, call `POST https://remotewp.dev/api/v1/handoff/log` with the authenticated RemoteWP Master/Agency license key in `Authorization: Bearer <master-or-agency-license-key>`. This is the RemoteWP account/license key owned by the agency/operator, not the WordPress site token. Include the current `site_id`; the server resolves the agency and assignment and never accepts a platform/operator fallback.
 
 ---
 
 ## Hand-Off Logging & Memory Continuity for AI Agents
 
-Every time you connect, audit, or complete a task on a WordPress site, you **MUST** use the authenticated Pro agency connection for the RemoteWP Central Dashboard and fetch past context memory before starting:
+Every time you connect, audit, or complete a task on a WordPress site, you **MUST** use the authenticated RemoteWP Master/Agency connection for the RemoteWP Central Dashboard and fetch past context memory before starting when that key is provided.
+
+### Handoff authorization rule
+
+- `X-RemoteWP-Token` is only the WordPress site API token.
+- `Authorization: Bearer <master-or-agency-license-key>` is the RemoteWP Master/Agency license key from the RemoteWP account/dashboard.
+- Do **not** use the site token as the central handoff bearer token.
+- Do **not** search the WordPress files, database, logs, `.env`, wp-config.php, browser storage, or local project files to discover this key.
+- Do **not** write the Master/Agency key into `.agent/handoff.md`, reports, logs, screenshots, or summaries.
+- If the Master/Agency key was not provided in the current secure working context, ask the user/admin for the RemoteWP Master/Agency key before calling the central handoff endpoints. Do not downgrade immediately to a local-only handoff unless the user declines or the central API remains unavailable.
 
 ### 1) Fetch Past Context Memory (Before Work):
-Call `GET https://remotewp.dev/api/v1/handoff/context?domain=<domain>&site_id=<site-id>` with `Authorization: Bearer <license-key>` to read only the technical history belonging to the authenticated agency/domain assignment.
+Call `GET https://remotewp.dev/api/v1/handoff/context?domain=<domain>&site_id=<site-id>` with `Authorization: Bearer <master-or-agency-license-key>` to read only the technical history belonging to the authenticated agency/domain assignment.
 
 ### 2) Record Hand-Off Log (After Work):
-Call `POST https://remotewp.dev/api/v1/handoff/log` with `Authorization: Bearer <license-key>` and JSON body:
+Call `POST https://remotewp.dev/api/v1/handoff/log` with `Authorization: Bearer <master-or-agency-license-key>` and JSON body:
 ```json
 {
   "domain": "example.com",
@@ -443,7 +452,7 @@ When you complete your assigned inspection, bug fix, design update, or maintenan
 1. **ASK THE USER**: *"Am finalizat sarcina pe acest site. Mai dorești să execut altceva pe acest domeniu sau putem încheia și salva raportul Hand-Off în Dashboard?"*
 2. **IF THE USER SAYS NO** (or confirms wrap-up):
    - Immediately compile the **Executive Client Summary** (in elegant English or Romanian per user preference) and **Technical Memory Log**.
-   - Execute `POST https://remotewp.dev/api/v1/handoff/log` using the authenticated Pro agency license, only when the site's explicit handoff consent is enabled.
+   - Execute `POST https://remotewp.dev/api/v1/handoff/log` using the authenticated RemoteWP Master/Agency license key, only when the site's explicit handoff consent is enabled.
    - Confirm to the user that the Hand-Off log was saved to the RemoteWP Dashboard.
 3. **IF THE USER ASKS FOR MORE WORK**:
    - Perform the requested work first, and repeat the finalization check when finished.
@@ -465,7 +474,7 @@ When an endpoint returns `403` or `404` because it requires Pro:
 
 | Status | Meaning | Action |
 |--------|---------|--------|
-| `401` | Missing/invalid site token | Verify `X-RemoteWP-Token` for WordPress site API calls; verify `Authorization: Bearer <license-key>` for central handoff calls |
+| `401` | Missing/invalid token | Verify `X-RemoteWP-Token` for WordPress site API calls; verify the RemoteWP Master/Agency key in `Authorization: Bearer <master-or-agency-license-key>` for central handoff calls |
 | `403` | Operation not permitted | Check permission profile; inform user if Pro upgrade needed |
 | `404` | File or endpoint not found | Verify path is relative to WordPress root |
 | `429` | Rate limited | Wait and retry |
