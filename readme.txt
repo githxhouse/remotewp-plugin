@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.7.2
+Stable tag: 3.7.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -106,8 +106,8 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 * POST /mkdir — Create new directories
 * POST /restore — Restore from automatic backup
 * GET /search — Search file contents (grep-like)
-* POST /sync — Last-resort WAF-compatible encoded dispatcher; authentication and authorization still apply
-* POST /process — Alias for /sync, used only when the normal route is blocked
+* POST /sync — WAF-compatible base64-encoded request dispatcher
+* POST /process — Alias for /sync
 
 **WordPress Operations API (Pro)**
 
@@ -144,10 +144,6 @@ Core Web Vitals analysis requires browser or field-performance data that RemoteW
 
 curl -H "X-RemoteWP-Token: YOUR_TOKEN" https://yoursite.com/wp-json/helper/v1/status
 
-= Video Tutorial =
-
-Watch the official RemoteWP tutorial: https://www.youtube.com/watch?v=98sJw7tmmWQ
-
 = Limitations =
 
 RemoteWP provides controlled access to supported WordPress files and operations. It does not guarantee that an AI-generated recommendation or code modification is correct. Visual inspection, browser testing, analytics and external SEO data may require additional tools. You remain responsible for configuring permissions and reviewing sensitive operations.
@@ -168,14 +164,12 @@ RemoteWP enforces HTTPS, uses 64-character cryptographic tokens, implements rate
 
 = Can I limit what the API can do? =
 
-Yes. RemoteWP offers three permission profiles. For compatibility with existing installations, the current plugin activation default is Full Access. Review the setting immediately after installation and select the narrowest profile required:
+Yes. RemoteWP offers three permission profiles:
 - **Read Only** — Only list, read, search and WordPress info operations
 - **Read & Write** — Read plus write and create operations
 - **Full Access** — All operations including delete and plugin management
 
 You can also restrict access to specific directories using path restrictions.
-
-The encoded /sync route is only a last-resort compatibility fallback for a narrowly scoped server or WAF routing problem. It is not a security bypass and must not be used to circumvent Wordfence, cPanel, ModSecurity or another access-control policy. Authentication, authorization, path restrictions, backups and audit logging remain enforced.
 
 = Which AI agents can I use? =
 
@@ -200,6 +194,11 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 3. Settings — Permissions, rate limiting and IP whitelist
 
 == Changelog ==
+
+= 3.7.3 =
+* Fix: Corrected wp-content path detection on hosting setups where ABSPATH and WP_CONTENT_DIR normalize differently, preventing false core_modification_blocked errors for theme/plugin files such as child-theme functions.php.
+* Improvement: Executable site file mutations now return an explicit approval-required response so agents must explain the change, request user approval, then continue through RemoteWP with automatic backup and restore metadata.
+* Improvement: V2 connection payload advertises mutation endpoints and approval flow to reduce slow or confused agent startup.
 
 = 3.7.2 =
 * Release: Aligned the public plugin documentation and metadata with RemoteWP V2.

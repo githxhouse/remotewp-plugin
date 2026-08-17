@@ -532,6 +532,7 @@ class RemoteWP_FS_API {
 					'Do not crawl /wp-json/ or test unrelated WordPress core REST routes during startup.',
 					'Use the endpoints listed here and begin the requested task after this check succeeds.',
 					'Call health and context before mutations or when troubleshooting authorization.',
+					'If a mutation returns 428 dangerous_file_approval_required, explain the exact change and ask the site owner for approval; then retry with dangerous_operation_approved=true and approval_note.',
 					'Read the full skill only when detailed operating rules are needed.',
 				),
 				'prompt_injection' => array(
@@ -549,6 +550,11 @@ class RemoteWP_FS_API {
 					'read'    => $base . '/read',
 					'fs_read' => $base . '/fs/read',
 					'fs_list' => $base . '/fs/list',
+					'write'   => $base . '/fs/write',
+					'patch'   => $base . '/patch',
+					'delete'  => $base . '/fs/delete',
+					'rename'  => $base . '/fs/rename',
+					'restore' => $base . '/fs/restore',
 				),
 				'legacy'      => '/wp-json/helper/v1/ remains available only as a fallback for older connectors.',
 			)

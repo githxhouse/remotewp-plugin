@@ -89,7 +89,7 @@ Never infer the agency executor or platform operator from the Terms and Conditio
   "sites": [
     {
       "domain": "example.com",
-      "plugin_version": "3.7.2",
+      "plugin_version": "3.7.3",
       "activated_at": "2026-08-01T10:00:00.000Z",
       "last_active_at": "2026-08-12T14:00:00.000Z"
     }
@@ -178,7 +178,7 @@ If the base URL contains `{{API_BASE}}`, replace it with: `https://<site>/wp-jso
 8. **Prefer child themes and custom plugins.** Avoid modifying parent theme or plugin files directly.
 9. **Do not modify WordPress core.** All write operations are already restricted to `wp-content/`.
 10. **Avoid delete and rename unless explicitly required.** These are destructive -- prefer write with backup.
-11. **Never attempt to access protected files.** `wp-config.php`, `.env`, `.htaccess` and others are always blocked.
+11. **Ask for explicit approval on sensitive executable site files.** If a mutation returns `428 dangerous_file_approval_required`, capture the returned `approval_request_id`, explain the exact file, operation, expected impact and rollback plan to the user. Continue only after the user approves, then resend the same mutation with `approval_request_id`, `dangerous_operation_approved=true` and a concise `approval_note`. RemoteWP logs both the approval request and the confirmation.
 12. **Report every modified path.** List all files changed in your summary after a write session.
 13. **Verify the API response after every operation.** Check for `success: true` or appropriate status codes.
 14. **Stop if permissions are insufficient.** Inform the user and recommend upgrading to Pro if needed.
@@ -196,6 +196,7 @@ If the base URL contains `{{API_BASE}}`, replace it with: `https://<site>/wp-jso
 26. **Use the dedicated v2 mutation aliases.** Prefer `/remotewp/v2/fs/write`, `/fs/mkdir`, `/fs/rename`, `/fs/delete`, and `/fs/restore`; include `expected_sha256` for every existing regular-file target and stop on `428 expected_sha256_required` or `409 file_changed`.
 27. **Treat backup retention as review-only unless explicitly approved.** Read `health.data.backup_inventory`, verify `backup_manifests_valid`, and never delete eligible backups automatically; retention thresholds only identify candidates.
 28. **Review sensitive v2 mutations explicitly.** If a v2 write or patch returns `428 sensitive_content_review_required`, inspect the intended change and resend only after explicit approval with `audit_approved=true`; never include the secret in audit details.
+29. **Do not send users to cPanel/File Manager for normal approved site edits.** RemoteWP must handle approved theme/plugin/file edits through the API with automatic backup first and restore metadata in the response. Manual cPanel instructions are only a last-resort diagnostic when the WordPress REST API itself is down.
 
 ## Procedure
 
@@ -230,11 +231,11 @@ All paths are **relative to WordPress root** (ABSPATH). Never use absolute paths
 ### 3) Write and Modify Files `[PRO]`
 
 **Direct endpoints:**
-- `POST /write` -- Create or overwrite file. Body: `{ path, content, expected_sha256? }`
+- `POST /write` -- Create or overwrite file. Body: `{ path, content, expected_sha256?, dangerous_operation_approved?, approval_note? }`
 - `POST /mkdir` -- Create directory. Body: `{ path }`
-- `POST /rename` -- Move/rename. Body: `{ path, new_name, expected_sha256? }`
-- `POST /delete` -- Delete. Body: `{ path, expected_sha256? }`
-- `POST /restore` -- Restore from backup. Body: `{ path, backup_id?, backup_file?, expected_sha256?, idempotency_key? }`. Prefer `backup_id`; `backup_file` remains a legacy compatibility field.
+- `POST /rename` -- Move/rename. Body: `{ path, new_name, expected_sha256?, dangerous_operation_approved?, approval_note? }`
+- `POST /delete` -- Delete. Body: `{ path, expected_sha256?, dangerous_operation_approved?, approval_note? }`
+- `POST /restore` -- Restore from backup. Body: `{ path, backup_id?, backup_file?, expected_sha256?, idempotency_key?, dangerous_operation_approved?, approval_note? }`. Prefer `backup_id`; `backup_file` remains a legacy compatibility field.
 
 `expected_sha256` is optional during the v1 compatibility period, but must be
 used for every existing-file mutation by a compliant connector. The server
@@ -245,6 +246,21 @@ original successful response instead of executing the mutation again. Use
 v1 operation. When v2 is available, prefer
 `GET /remotewp/v2/operations/{operation_id}` to inspect its phase history,
 backup identifier and verification status.
+
+For executable or sensitive site files such as theme `functions.php` or plugin
+`.php` files, expect a first response with HTTP `428`,
+`dangerous_file_approval_required`, and an `approval_request_id`. Do not stop or
+suggest manual editing. Explain the change to the user and ask for approval.
+After approval, resend the same mutation with the same `expected_sha256` and
+`idempotency_key`, plus:
+
+```json
+{
+  "approval_request_id": "rwa_example_from_428_response",
+  "dangerous_operation_approved": true,
+  "approval_note": "User approved editing wp-content/themes/theme/functions.php after reviewing the exact change and backup/restore plan."
+}
+```
 
 ### WAF-safe transport protocol (Wordfence / ModSecurity / Cloudflare)
 

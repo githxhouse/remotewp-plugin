@@ -144,18 +144,30 @@ class RemoteWP_Path_Policy {
 	}
 
 	private static function write_error( $path, $base ) {
-		$relative = strtolower( ltrim( str_replace( '\\', '/', $path ), '/' ) );
+		$path_normalized = strtolower( rtrim( str_replace( '\\', '/', $path ), '/' ) );
 		$base_normalized = strtolower( rtrim( str_replace( '\\', '/', $base ), '/' ) );
+		$wp_content_dir  = defined( 'WP_CONTENT_DIR' ) ? realpath( WP_CONTENT_DIR ) : false;
+		if ( ! $wp_content_dir ) {
+			$wp_content_dir = realpath( $base . DIRECTORY_SEPARATOR . 'wp-content' );
+		}
+
+		if ( $wp_content_dir ) {
+			$wp_content_normalized = strtolower( rtrim( str_replace( '\\', '/', $wp_content_dir ), '/' ) );
+			if ( $path_normalized === $wp_content_normalized || 0 === strpos( $path_normalized, $wp_content_normalized . '/' ) ) {
+				$wp_content_relative = ltrim( substr( $path_normalized, strlen( $wp_content_normalized ) ), '/' );
+				if ( 0 === strpos( $wp_content_relative, 'plugins/remotewp' ) || 0 === strpos( $wp_content_relative, 'remotewp-pro' ) ) {
+					return new WP_Error( 'self_protection', 'RemoteWP files are protected.', array( 'status' => 403 ) );
+				}
+				return true;
+			}
+		}
+
+		$relative = ltrim( $path_normalized, '/' );
 		if ( 0 === strpos( $relative, $base_normalized . '/' ) ) {
 			$relative = substr( $relative, strlen( $base_normalized ) + 1 );
 		}
+
 		if ( in_array( $relative, array( 'llms.txt', 'llms-full.txt' ), true ) ) {
-			return true;
-		}
-		if ( 'wp-content' === $relative || 0 === strpos( $relative, 'wp-content/' ) ) {
-			if ( 0 === strpos( $relative, 'wp-content/plugins/remotewp' ) || 0 === strpos( $relative, 'wp-content/remotewp-pro' ) ) {
-				return new WP_Error( 'self_protection', 'RemoteWP files are protected.', array( 'status' => 403 ) );
-			}
 			return true;
 		}
 		return new WP_Error( 'core_modification_blocked', 'Writes are limited to wp-content and approved root documentation files.', array( 'status' => 403 ) );
