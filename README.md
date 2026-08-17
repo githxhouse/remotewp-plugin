@@ -1,254 +1,302 @@
-# RemoteWP - AI-Powered WordPress Development, Debugging and SEO
+# Remote WP — Connect Claude, Gemini, Cursor & Codex to WordPress
 
-[![License: GPL v2+](https://img.shields.io/badge/License-GPLv2%2B-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
-[![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-21759b.svg)](https://wordpress.org)
-[![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4.svg)](https://php.net)
+[![License: GPL v2+](https://img.shields.io/badge/License-GPLv2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
+[![WordPress](https://img.shields.io/badge/WordPress-5.8+-21759b.svg)](https://wordpress.org)
+[![PHP](https://img.shields.io/badge/PHP-7.4+-777bb4.svg)](https://php.net)
 [![Version](https://img.shields.io/badge/Version-3.7.2-6366f1.svg)](https://remotewp.dev)
 
-RemoteWP is a controlled WordPress REST API for AI agents and development tools such as Claude, ChatGPT, Gemini, Cursor, Windsurf and Codex. It helps teams inspect, troubleshoot, optimize and maintain WordPress websites without sharing raw SSH, FTP or hosting-panel credentials.
+**Remote WP securely connects compatible AI agents like Claude, Gemini, and Codex to a WordPress website through a controlled REST API.**
 
-With RemoteWP, an authorized AI agent can assist with WordPress development, website debugging, SEO improvements, performance investigation, WooCommerce maintenance and controlled file operations. Every action remains subject to authentication, permission profiles, path restrictions, backups and activity logging.
+**It allows you to connect Claude or Gemini inside Cursor directly to WordPress. This lets your AI agents inspect approved files, edit code, debug errors, and optimize SEO safely without sharing raw SSH or FTP credentials.**
 
-RemoteWP provides the WordPress connection and supported operations. The quality of an analysis or code change also depends on the capabilities of the connected AI agent and the review process used by the site owner.
+**Remote WP reduces the need to share host-level access while keeping control restricted through API authentication, permission profiles, rate limits, and activity logs.**
 
-## RemoteWP V2: Free/Core Plugin and Licensed Pro Module
+> Remote WP provides the WordPress connection and supported API operations. The quality and scope of the analysis also depend on the tools and capabilities available to the connected AI agent.
 
-RemoteWP V2 uses one public Free/Core plugin package. Pro capabilities are delivered as an encrypted module bound to the validated license and domain. Customers do not receive public Master or Full ZIP archives.
+---
 
-This distribution model separates:
+## AI Agent Skills & Dynamic Stack Resolution (v3.7.2)
 
-- **RemoteWP platform** - the software and license infrastructure operated by RemoteWP.
-- **Free/Core plugin** - the public WordPress package installed on a client website.
-- **Pro module** - encrypted capabilities delivered only after license and domain validation.
-- **Permission profile** - the site-level access policy that limits what the connected agent can do.
+RemoteWP includes an intelligent **Cloud Skill Resolver** (`GET /wp-json/remotewp-license/v1/skills/resolve`) that dynamically inspects your site's active technology stack (WooCommerce, Elementor, WPBakery, RankMath, Yoast, SEOPress) and delivers pre-formatted, tailored AI Skill Packs directly to connecting AI agents (Claude, ChatGPT, Gemini, Cursor).
 
-An active Pro license does not automatically grant unrestricted access. The selected permission profile, protected paths and operation safety rules still apply.
+RemoteWP V2 distributes one public Free/Core package. Pro capabilities are delivered as an encrypted, domain-bound module after the installed plugin validates an active license. Master/Full ZIP archives are not distributed to customers.
 
-## AI Agent Skills and Dynamic WordPress Stack Detection
+### Included Skill Modules:
+- **`remotewp-bridge`**: Core AI Agent Operations, Site DNA, Ultra-Fast Onboarding Audit (<2s single-call status response), and Action Menu.
+- **`wordpress-woocommerce`**: Score 90+ Catalog Perfection Loop, inventory management, payment gateway diagnostics, and `/llms.txt` generator.
+- **`wordpress-elementor`**: Deep `_elementor_data` JSON structure inspection, widget customization, flexbox containers, and template shortcodes.
+- **`wordpress-wpbakery`**: WPBakery shortcodes (`[vc_row]`, `[vc_column]`, `[vc_custom_heading]`), inline CSS meta (`_wpb_shortcodes_custom_css`), and layout portability.
+- **`wordpress-seo`**: Schema.org JSON-LD structured data injection, RankMath / Yoast / SEOPress meta tag optimization, and heading hierarchy audit.
 
-RemoteWP includes an AI Agent Skill Pack that gives compatible agents site-specific instructions and safe operating context. The Cloud Skill Resolver can detect common WordPress technologies, including WooCommerce, Elementor, WPBakery, Rank Math, Yoast SEO and SEOPress, then return a tailored skill pack.
-
-Available skill areas include:
-
-- WordPress file inspection and controlled maintenance
-- Elementor and WPBakery layout work
-- WooCommerce catalog, checkout and integration diagnostics
-- Technical SEO, metadata, headings and Schema.org review
-- WordPress debugging, performance investigation and cache maintenance
-
-The resolver endpoint is:
-
-`GET /wp-json/remotewp-license/v1/skills/resolve`
+---
 
 ## What RemoteWP Can Help With
 
-### WordPress Development and Design
+### Design & Layout
 
-- Inspect approved theme, plugin and content files
-- Investigate responsive layout and CSS issues
-- Review templates, hooks, filters and shortcodes
-- Prepare controlled changes for an approved child theme or plugin
-- Apply supported changes with automatic backups when permitted
+- Inspect approved theme templates and stylesheets
+- Search for CSS related to visual problems
+- Investigate responsive layout issues
+- Modify approved frontend files
+- Assist with WooCommerce template and layout changes
+- Apply controlled design modifications
 
-### WordPress Debugging and Maintenance
+> Visual confirmation may require browser access, screenshots or another rendering tool available to the connected AI agent.
 
-- Investigate PHP, JavaScript and CSS errors
-- Search approved code for likely causes of a problem
-- Review plugin and theme conflicts
-- Inspect installed plugins and update information
-- Clear supported caches and transients
+### WordPress Debugging
 
-### Technical SEO for WordPress
+- Search approved theme and plugin files
+- Investigate PHP, JavaScript and CSS problems
+- Locate functions related to WordPress errors
+- Analyze likely plugin or theme conflicts
+- Review broken functionality
+- Apply controlled fixes with automatic backups
 
-- Review heading structure, canonical tags and metadata
-- Inspect Schema.org and JSON-LD implementations
-- Identify duplicated or hardcoded SEO elements
-- Review SEO plugin and theme integration
-- Prepare technical SEO recommendations before making changes
+### SEO
 
-RemoteWP does not replace a crawler, analytics platform, keyword research tool or complete SEO suite. Browser access and external performance or search data may still be required for a full SEO audit and Core Web Vitals analysis.
+- Inspect templates affecting headings and metadata
+- Review canonical and schema implementations
+- Search for duplicated or hardcoded SEO elements
+- Investigate technical SEO issues in themes and plugins
+- Review approved WordPress content and template structure
+- Assist with approved SEO modifications
 
-### WooCommerce Support
+> RemoteWP does not replace a crawler, analytics platform, keyword tool or complete SEO suite. A complete SEO audit may require browser access and external data.
 
-- Inspect WooCommerce templates and approved customizations
-- Investigate catalog, checkout and payment integration issues
-- Review product and order-related code paths
-- Assist with controlled performance and maintenance work
+### Performance
 
-## Security and Access Controls
+- Search scripts and styles loaded by themes and plugins
+- Inspect inefficient or repetitive code
+- Investigate cache and transient-related problems
+- Review possible plugin overhead
+- Clear supported WordPress caches and transients
+- Assist with approved code-level optimizations
 
-- Cryptographically generated API token authentication
-- HTTPS enforcement in production
-- Configurable rate limiting and brute-force lockout
-- Protected files and directories, including `.env`, `.git`, `.htaccess`, `.user.ini` and `wp-config.php`
-- Path validation and write restrictions
-- Dangerous file-extension blocking
-- Automatic backups before supported write, delete and rename operations
-- Randomized backup storage protected from direct web access
-- JSON activity logs with automatic rotation
-- Optional IP allowlisting
+> Core Web Vitals analysis requires browser or field-performance data that RemoteWP does not provide by itself.
 
-The `/sync` and `/process` routes are compatibility fallbacks for a narrowly scoped server or WAF routing problem. They are not security bypasses and must not be used to circumvent Wordfence, cPanel, ModSecurity or another access-control policy. Authentication, authorization, path restrictions, backups and logging remain enforced.
+### Development & WooCommerce
+
+- Inspect and modify approved theme and plugin files
+- Work with hooks, filters, templates and shortcodes
+- Create files and directories when permissions allow
+- Assist with WooCommerce customizations
+- Search the codebase before making changes
+- Apply approved code modifications
+
+### Maintenance
+
+- Inspect installed plugins and available update information
+- Activate or deactivate plugins when permitted
+- Review supported WordPress configuration values
+- Search approved WordPress directories
+- Clear caches and transients
+- Standardize recurring work across client websites
+
+---
+
+## Key Features
+
+### Security Architecture
+
+- **Token Authentication**: Cryptographically secure 64-character tokens
+- **HTTPS Enforcement**: Production connections require HTTPS (bypassed on localhost)
+- **Rate Limiting**: Per-IP bucket algorithm with configurable requests-per-minute threshold
+- **Brute Force Protection**: Automatic IP lockout after 5 consecutive failed authentication attempts
+- **Protected Files**: `wp-config.php`, `.env`, `.htaccess`, `.git`, `.user.ini` always blocked
+- **Token TTL**: Configurable (default: `0` = never expires)
+- **Path Validation**: `realpath()` + `strpos()` check against ABSPATH
+- **Write Restriction**: Filesystem write operations restricted to `wp-content/`
+- **Dangerous Extensions**: `php`, `phtml`, `php5-8`, `phar`, `cgi`, `sh`, `py`, `rb`, `exe` blocked by default
+- **Auto-Backup**: Timestamped backup created before every write/delete/rename
+- **Backup Storage**: Randomized directory inside `wp-content/uploads/`, protected by `.htaccess` and `index.php`
+- **Audit Log**: JSON-based, 500 entries max, auto-rotated
+- **HTTPS Check**: Uses `REMOTE_ADDR` for localhost detection (prevents spoofing)
+- **IP Whitelist**: CIDR notation supported; whitelisted IPs bypass rate limiting
+
+---
 
 ## Permission Profiles
 
-Permission profiles are independent from the Free/Core versus Pro module distinction.
+| Profile | Allowed Operations |
+|---------|-------------------|
+| **Read Only** | list, read, status, search, wp_info, wp_plugins, wp_options, instructions |
+| **Read & Write** | All read operations + write, mkdir, wp_cache_clear |
+| **Full Access** | All operations including delete, rename, restore, plugin toggle |
 
-| Profile | Allowed operations |
-| --- | --- |
-| **Read Only** | Read-only operations such as list, read, status, search and approved WordPress information |
-| **Read and Write** | Read-only operations plus approved write and directory-creation operations |
-| **Full Access** | All supported operations, including delete, rename, restore and permitted plugin management |
+Default at activation: **Full Access**. Configure in the RemoteWP admin dashboard.
 
-For compatibility with existing installations, the current plugin activation default is **Full Access**. Site owners should review the setting immediately after installation and select the narrowest profile required for the job.
+---
 
 ## API Endpoints
 
-The legacy compatibility namespace is `/wp-json/helper/v1`. The modern V2 contract is also exposed by the plugin for clients that use the V2 API.
-
-### Free/Core Endpoints
+### Free Endpoints
 
 | Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/helper/v1/status` | Plugin status, permission level and WordPress/PHP versions |
-| `GET` | `/helper/v1/list` | List approved directory contents with metadata |
-| `GET` | `/helper/v1/read` | Read approved file content up to 5 MB |
-| `GET` | `/helper/v1/skill` | Retrieve the site-specific AI Agent Skill Pack |
-| `GET` | `/helper/v1/instructions` | Retrieve compatibility instructions |
-| `GET` | `/helper/v1/wp/info` | Basic WordPress site information |
+|--------|----------|-------------|
+| `GET` | `/helper/v1/status` | Plugin status, permission level, PHP/WP versions |
+| `GET` | `/helper/v1/list` | List directory contents with metadata |
+| `GET` | `/helper/v1/read` | Read file content (up to 5MB) |
+| `GET` | `/helper/v1/skill` | Site-specific AI Agent Skill Pack (SKILL.md with site vars pre-filled) |
+| `GET` | `/helper/v1/instructions` | Legacy AI instructions |
+| `GET` | `/helper/v1/wp/info` | Basic site info (theme, WP version) |
 
-### Licensed Pro Module - Filesystem Operations
-
-These operations require the encrypted Pro module, an active license/domain validation and a permission profile that allows the requested action.
+### Pro Endpoints -- Filesystem
 
 | Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/helper/v1/write` | Create or update an approved file with automatic backup |
-| `POST` | `/helper/v1/delete` | Delete an approved file or directory with backup |
-| `POST` | `/helper/v1/rename` | Rename an approved file or directory with backup |
-| `POST` | `/helper/v1/mkdir` | Create an approved directory |
-| `POST` | `/helper/v1/restore` | Restore from an available backup |
-| `GET` | `/helper/v1/search` | Search approved file contents |
-| `POST` | `/helper/v1/sync` | Last-resort encoded compatibility dispatcher |
-| `POST` | `/helper/v1/process` | Compatibility alias for `/sync` |
+|--------|----------|-------------|
+| `POST` | `/helper/v1/write` | Write/create file with auto-backup |
+| `POST` | `/helper/v1/delete` | Delete file or directory with auto-backup |
+| `POST` | `/helper/v1/rename` | Rename file or directory with auto-backup |
+| `POST` | `/helper/v1/mkdir` | Create directory recursively |
+| `POST` | `/helper/v1/restore` | Restore from backup |
+| `GET` | `/helper/v1/search` | Search file contents (grep-like) |
+| `POST` | `/helper/v1/sync` | WAF-compatible base64-encoded request dispatcher |
+| `POST` | `/helper/v1/process` | Alias for `/sync` |
 
-### Licensed Pro Module - WordPress Operations
+### Pro Endpoints -- WordPress Operations
 
 | Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/helper/v1/wp/info` | Extended site information when the Pro module is active |
-| `GET` | `/helper/v1/wp/plugins` | Plugin list and activation status |
-| `POST` | `/helper/v1/wp/plugin/toggle` | Activate or deactivate a plugin when permitted |
-| `GET` | `/helper/v1/wp/options` | Read approved WordPress options |
-| `POST` | `/helper/v1/wp/cache-clear` | Clear supported caches and transients |
+|--------|----------|-------------|
+| `GET` | `/helper/v1/wp/info` | Full site info: theme, plugins summary, WP version, multisite |
+| `GET` | `/helper/v1/wp/plugins` | Full plugin list with activation status |
+| `POST` | `/helper/v1/wp/plugin/toggle` | Activate or deactivate plugins |
+| `GET` | `/helper/v1/wp/options` | Read whitelisted WordPress options |
+| `POST` | `/helper/v1/wp/cache-clear` | Clear all supported caches and transients |
+
+---
 
 ## Quick Start
 
-1. Install the public `remotewp.zip` Free/Core package in WordPress.
-2. Activate RemoteWP and open the RemoteWP settings page.
-3. Copy the generated API token and configure the narrowest permission profile required.
-4. Connect an AI agent or development tool that can send authenticated HTTP requests.
-5. Validate the site status before requesting any write operation.
-
-### Check Plugin Status
-
 ```bash
-curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
-  https://yoursite.com/wp-json/helper/v1/status
+# Check plugin status
+curl -H "X-RemoteWP-Token: YOUR_TOKEN"   https://yoursite.com/wp-json/helper/v1/status
+
+# List theme files
+curl -H "X-RemoteWP-Token: YOUR_TOKEN"   "https://yoursite.com/wp-json/helper/v1/list?path=wp-content/themes/mytheme"
+
+# Read a file
+curl -H "X-RemoteWP-Token: YOUR_TOKEN"   "https://yoursite.com/wp-json/helper/v1/read?path=wp-content/themes/mytheme/style.css"
+
+# Write a file (Pro)
+curl -X POST   -H "X-RemoteWP-Token: YOUR_TOKEN"   -H "Content-Type: application/json"   -d '{"path":"wp-content/themes/mytheme/custom.css","content":"/* styles */"}'   https://yoursite.com/wp-json/helper/v1/write
 ```
 
-### List Approved Theme Files
+---
 
-```bash
-curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
-  "https://yoursite.com/wp-json/helper/v1/list?path=wp-content/themes/mytheme"
-```
+## Example AI Tasks
 
-### Read a Theme File
+**Design**
+> "Search the approved active-theme files for CSS related to the mobile product-card spacing problem. Explain the most likely cause and show the proposed modification before writing the file."
 
-```bash
-curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
-  "https://yoursite.com/wp-json/helper/v1/read?path=wp-content/themes/mytheme/style.css"
-```
+**Debugging**
+> "Search approved plugin and theme files for code related to the checkout validation error. Do not modify anything until the likely cause is identified."
 
-## Video Tutorial: Connect AI Agents to WordPress
-
-Watch the official RemoteWP how-to video to see how Claude, Cursor, Codex and Gemini connect to WordPress through the RemoteWP plugin:
-
-[![How to Connect AI Agents to WordPress with RemoteWP](https://img.youtube.com/vi/98sJw7tmmWQ/hqdefault.jpg)](https://www.youtube.com/watch?v=98sJw7tmmWQ)
-
-[Watch the RemoteWP WordPress AI agent setup tutorial on YouTube](https://www.youtube.com/watch?v=98sJw7tmmWQ)
-
-After watching the tutorial, visit the [RemoteWP GitHub repository](https://github.com/githxhouse/remotewp-plugin) to review the code, open an issue or contribute.
-
-## Example AI Agent Tasks
-
-**WordPress design**
-
-> Inspect the approved active-theme files for CSS related to the mobile product-card spacing problem. Explain the likely cause and show the proposed modification before writing any file.
-
-**WordPress debugging**
-
-> Search approved plugin and theme files for code related to the checkout validation error. Identify the likely cause and wait for approval before changing anything.
-
-**Technical SEO**
-
-> Inspect approved theme and SEO-plugin files for heading, canonical and Schema.org implementation problems. Prepare a report before applying changes.
+**SEO**
+> "Inspect approved theme and SEO-plugin files for heading, canonical and schema implementation problems. Prepare a report before applying changes."
 
 **Performance**
+> "Search approved theme and plugin files for scripts and styles that may be loaded globally. Recommend the lowest-risk code-level optimizations."
 
-> Search approved theme and plugin files for scripts and styles that may load globally. Recommend the lowest-risk code-level optimization.
+**WooCommerce Development**
+> "Create a backup and add the approved WooCommerce customization to the child theme. Do not modify WordPress core or the parent theme."
 
-**WooCommerce maintenance**
+**Maintenance**
+> "Review installed plugins and available update information. Prepare a maintenance summary before performing any write operation."
 
-> Review the approved WooCommerce customization, create a backup and propose the smallest safe change. Do not modify WordPress core or the parent theme.
+---
 
-## AI Agent Integrations
+## AI Agent Integration
 
-RemoteWP works with AI agents and automation tools that support authenticated HTTP requests with custom headers.
+RemoteWP can be used with AI agents and automation tools that support authenticated HTTP requests with custom headers.
 
-- **Claude, ChatGPT, Gemini and Codex** - use an HTTP-capable connector, action or tool.
-- **Cursor and Windsurf** - use a configured script, terminal tool or agent instruction.
-- **Custom agents** - call the REST API with any compatible HTTP client.
+The exact integration method depends on the AI platform:
 
-RemoteWP does not include a native connector for a specific AI platform. The integration method depends on the agent and hosting environment.
+- **Claude** -- may require an HTTP-capable tool or integration configured with the RemoteWP endpoint and token
+- **ChatGPT** -- may require a compatible action, connector or external tool
+- **Cursor and Windsurf** -- may use scripts, terminal tools or configured agent instructions
+- **Custom agents** -- can call the REST API directly using any HTTP client
+
+RemoteWP does not include a native plugin or connector for any specific AI platform.
+
+---
 
 ## AI Agent Skill Pack
 
-Retrieve the site-specific skill pack with:
+RemoteWP includes a built-in **AI Agent Skill Pack** at `skills/remotewp-bridge/SKILL.md`.
+
+**Retrieve with your site details pre-filled:**
 
 ```bash
-curl -H "X-RemoteWP-Token: YOUR_TOKEN" \
-  https://yoursite.com/wp-json/helper/v1/skill
+curl -H "X-RemoteWP-Token: YOUR_TOKEN"   https://yoursite.com/wp-json/helper/v1/skill
 ```
 
-Provide the returned instructions to the connected AI agent as a system prompt or custom instruction set.
+Feed the returned content to your AI agent as a system prompt or custom instruction set.
+
+---
+
+## Architecture
+
+```text
+remotewp/
+|-- remotewp.php                          # Main plugin loader, constants, activation, cron
+|-- uninstall.php                         # Clean uninstall
+|-- readme.txt                            # WordPress.org standard readme
+|-- includes/
+|   |-- class-remotewp-auth.php           # Token auth + HTTPS enforcement + IP whitelist
+|   |-- class-remotewp-rate-limiter.php   # Per-IP rate limiting + brute force lockout
+|   |-- class-remotewp-permissions.php    # Permission profiles + path security + protected files
+|   |-- class-remotewp-fs-api.php         # Free filesystem REST endpoints
+|   |-- class-remotewp-license.php        # License management + tier gating
+|   |-- class-remotewp-logger.php         # Audit logging (JSON, 500 entries) + auto-backup
+|   |-- class-remotewp-admin.php          # Admin dashboard
+|   |-- class-remotewp-pro-loader.php     # Pro module loader
+|   `-- class-remotewp-updater.php        # Auto-updater
+|-- pro/
+|   |-- class-remotewp-fs-api-pro.php     # Pro filesystem endpoints
+|   |-- class-remotewp-wp-api.php         # Pro WordPress operations endpoints
+|   `-- class-remotewp-admin-pro.php      # Pro admin enhancements
+|-- skills/
+|   `-- remotewp-bridge/
+|       `-- SKILL.md                      # AI Agent Skill Pack
+`-- admin/
+    |-- css/admin.css
+    `-- js/admin.js
+```
+
+---
 
 ## Requirements
 
-- WordPress 5.8 or newer
-- PHP 7.4 or newer
-- HTTPS in production
-- A compatible AI agent or HTTP client
+- WordPress 5.8+
+- PHP 7.4+
+- HTTPS (required in production, bypassed on localhost)
 
-## Responsible Use
+---
+
+## Limitations and Responsible Use
 
 RemoteWP provides controlled access to supported WordPress files and operations. It does not guarantee that an AI-generated recommendation or code modification is correct.
 
-- Review sensitive changes before execution.
-- Use the narrowest permission profile required.
-- Keep independent backups before major production changes.
-- Prefer staging environments for significant modifications.
-- Do not modify WordPress core when a child theme or custom plugin is a safer option.
-- Use browser testing, analytics and external SEO data when the task requires them.
+Review sensitive changes before execution and test important modifications in a staging environment whenever possible.
+
+Visual inspection, browser testing, database analysis, analytics, external SEO data and performance measurements may require additional tools beyond RemoteWP.
+
+- Do not grant broader permissions than required for the current task.
+- Avoid modifying WordPress core files. Prefer child themes or custom plugins for maintainable changes.
+- Maintain independent backups before major production modifications.
+- You remain responsible for configuring permissions and reviewing sensitive operations.
+
+---
 
 ## License
 
-GPL-2.0-or-later - [Full License](LICENSE)
+GPL-2.0-or-later -- [Full License](LICENSE)
+
+---
 
 ## Built By
 
-**[X-HOUSE SRL](https://xhouse.ro)** - Arad, Romania
+**[X-HOUSE SRL](https://xhouse.ro)** -- Arad, Romania
 
 - [remotewp.dev](https://remotewp.dev)
 - info@remotewp.dev
