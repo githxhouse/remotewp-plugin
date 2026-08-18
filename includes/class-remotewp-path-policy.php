@@ -173,10 +173,21 @@ class RemoteWP_Path_Policy {
 			$relative = substr( $relative, strlen( $base_normalized ) + 1 );
 		}
 
-		if ( in_array( $relative, array( 'llms.txt', 'llms-full.txt' ), true ) ) {
-			return true;
+		// Files in the WordPress root directory (e.g. homedir.tar, backup.zip, dump.sql, robots.txt, llms.txt, etc.)
+		if ( false === strpos( $relative, '/' ) ) {
+			$basename = strtolower( basename( $relative ) );
+			$protected_core = array(
+				'wp-config.php', 'wp-config-sample.php', '.htaccess', '.htpasswd', '.user.ini', 'php.ini', 'web.config',
+				'wp-activate.php', 'wp-blog-header.php', 'wp-comments-post.php', 'wp-cron.php', 'wp-links-opml.php',
+				'wp-load.php', 'wp-login.php', 'wp-mail.php', 'wp-settings.php', 'wp-signup.php', 'wp-trackback.php',
+				'xmlrpc.php', 'index.php'
+			);
+			if ( ! in_array( $basename, $protected_core, true ) && ( empty( $basename ) || '.' !== $basename[0] ) ) {
+				return true;
+			}
 		}
-		return new WP_Error( 'core_modification_blocked', 'Writes are limited to wp-content and approved root documentation files.', array( 'status' => 403 ) );
+
+		return new WP_Error( 'core_modification_blocked', 'Writes are limited to wp-content and approved non-core root files.', array( 'status' => 403 ) );
 	}
 
 	private static function check_symlinks( $base, $relative ) {

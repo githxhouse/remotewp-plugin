@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.7.11
+Stable tag: 3.7.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -89,6 +89,12 @@ Yes. RemoteWP uses the standard WordPress REST API namespace (`/wp-json/helper/v
 3. Settings - Connection diagnostics, rate limiting and IP whitelist; license and capability policy are managed centrally by RemoteWP
 
 == Changelog ==
+
+= 3.7.12 =
+
+* Feature: Enabled safe modification and deletion of non-core root files (e.g., backup archives such as homedir.tar, dump.sql, documentation files, and logs).
+* Safety & Audit: Operations on root files and sensitive formats require explicit operator approval (`dangerous_operation_approved=true` + `approval_note`), trigger automatic pre-operation backups, and record immutable audit logs.
+* Protection: Core WordPress files (`wp-config.php`, `wp-load.php`, `wp-admin/`, `wp-includes/`, and RemoteWP internals) remain strictly protected.
 
 = 3.7.11 =
 

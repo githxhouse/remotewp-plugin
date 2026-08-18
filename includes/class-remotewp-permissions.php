@@ -1,12 +1,19 @@
 <?php
 /**
- * RemoteWP Permissions
+ * RemoteWP Permissions Manager
  *
- * Handles granular permission control for API operations.
- * Supports three profiles: read-only, read-write, full.
- * Also supports path restrictions to limit access to specific directories.
+ * Handles granular capability checks and path restrictions.
+ * In the Open Core model, write/delete/rename operations are
+ * physically in the Pro add-on, but permission profiles still
+ * govern which API operations are allowed.
+ *
+ * Profiles:
+ *   - read-only:   list, read, status, instructions, info
+ *   - read-write:  all read + write, mkdir, restore
+ *   - full:        all operations including delete, rename, plugin management
  *
  * @package RemoteWP
+ * @since   3.1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -21,44 +28,63 @@ class RemoteWP_Permissions {
 	 * @var array
 	 */
 	private $profiles = array(
-		'read-only'  => array( 'list', 'read', 'status', 'search', 'wp_info', 'wp_plugins', 'wp_options', 'instructions' ),
-		'read-write' => array( 'list', 'read', 'write', 'mkdir', 'status', 'search', 'wp_info', 'wp_plugins', 'wp_options', 'wp_cache_clear', 'instructions' ),
-		'full'       => array( 'list', 'read', 'write', 'delete', 'rename', 'mkdir', 'restore', 'status', 'search', 'wp_info', 'wp_plugins', 'wp_plugin_toggle', 'wp_options', 'wp_cache_clear', 'instructions' ),
+		'read-only' => array(
+			'read',
+			'list',
+			'status',
+			'instructions',
+			'skill',
+			'wp_info',
+		),
+		'read-write' => array(
+			'read',
+			'list',
+			'status',
+			'instructions',
+			'skill',
+			'wp_info',
+			'write',
+			'mkdir',
+			'restore',
+			'search',
+			'patch',
+		),
+		'full' => array(
+			'read',
+			'list',
+			'status',
+			'instructions',
+			'skill',
+			'wp_info',
+			'write',
+			'mkdir',
+			'restore',
+			'search',
+			'patch',
+			'delete',
+			'rename',
+			'wp_plugins',
+			'wp_plugin_toggle',
+			'wp_options',
+			'wp_cache_clear',
+		),
 	);
 
 	/**
-	 * Protected files that cannot be read or modified via API.
+	 * Check if an operation is allowed under the current permission profile.
 	 *
-	 * @var array
-	 */
-	private $protected_files = array(
-		'wp-config.php',
-		'wp-config-sample.php',
-		'.env',
-		'.env.local',
-		'.env.production',
-		'.env.staging',
-		'.env.deploy',
-		'.htaccess',
-		'.htpasswd',
-		'.user.ini',
-		'php.ini',
-		'web.config',
-	);
-
-	/**
-	 * Check if a specific operation is allowed.
-	 *
-	 * @param string $operation The operation to check (read, write, delete, etc.).
-	 * @return true|WP_Error True if allowed, WP_Error if denied.
+	 * @param string $operation The operation to check (e.g., 'read', 'write', 'delete').
+	 * @return true|WP_Error True if allowed, WP_Error with 403 status if denied.
 	 */
 	public function can( $operation ) {
-		// Capability entitlement is resolved by the RemoteWP central server and
-		// represented locally only by the presence of the validated module. A
-		// WordPress option must not be able to downgrade or unlock the bridge.
-		$is_pro = class_exists( 'RemoteWP_FS_API_Pro' ) || ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL );
-		$level  = $is_pro ? 'full' : 'read-only';
-		$allowed = $is_pro ? $this->profiles['full'] : $this->profiles['read-only'];
+		$level = get_option( 'remotewp_permission_level', 'full' );
+
+		// Validate level exists, fallback to 'full'
+		if ( ! isset( $this->profiles[ $level ] ) ) {
+			$level = 'full';
+		}
+
+		$allowed = $this->profiles[ $level ];
 
 		if ( ! in_array( $operation, $allowed, true ) ) {
 			return new WP_Error(
@@ -81,6 +107,7 @@ class RemoteWP_Permissions {
 			'mkdir',
 			'restore',
 			'search',
+			'patch',
 			'wp_plugins',
 			'wp_plugin_toggle',
 			'wp_options',
@@ -135,43 +162,6 @@ class RemoteWP_Permissions {
 	 */
 	private function check_path_restrictions( $real_path, $real_base ) {
 		return true;
-	}
-
-	/**
-	 * Verify that write operations are restricted strictly to wp-content.
-	 *
-	 * @param string $real_path Absolute real path.
-	 * @return true|WP_Error
-	 */
-	private function check_write_restrictions( $real_path ) {
-		$wp_content_dir = defined( 'WP_CONTENT_DIR' ) ? realpath( WP_CONTENT_DIR ) : false;
-		if ( ! $wp_content_dir ) {
-			$wp_content_dir = realpath( ABSPATH . 'wp-content' );
-		}
-
-		// Exception: Allow writing llms.txt or llms-full.txt in the WordPress root directory
-		$basename = strtolower( basename( $real_path ) );
-		if ( in_array( $basename, array( 'llms.txt', 'llms-full.txt' ), true ) ) {
-			$real_base = realpath( ABSPATH );
-			if ( dirname( $real_path ) === $real_base ) {
-				return true;
-			}
-		}
-
-		if ( $wp_content_dir ) {
-			$real_path_normalized      = str_replace( '\\', '/', $real_path );
-			$wp_content_dir_normalized = str_replace( '\\', '/', $wp_content_dir );
-
-			if ( $real_path_normalized !== $wp_content_dir_normalized && 0 !== strpos( $real_path_normalized, $wp_content_dir_normalized . '/' ) ) {
-				return new WP_Error(
-					'core_modification_blocked',
-					__( 'Access denied. Write operations are restricted strictly to the wp-content directory to protect WordPress core files.', 'remotewp' ),
-					array( 'status' => 403 )
-				);
-			}
-		}
-		return true;
-
 	}
 
 	/**
