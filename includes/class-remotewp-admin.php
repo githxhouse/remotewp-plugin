@@ -378,6 +378,52 @@ class RemoteWP_Admin {
 			</div>
 		</div>
 
+		<!-- Quick Start Guide: first action after the connection status -->
+		<div class="remotewp-card rwp-quickstart-card" style="margin-top: 18px; border: 1px solid rgba(37,99,235,0.25); background: #0f172a;">
+			<div class="remotewp-card-header">
+				<h2 style="display: flex; align-items: center; gap: 8px;">
+					🎯 <?php esc_html_e( 'Quick Start', 'remotewp' ); ?>
+				</h2>
+				<p class="rwp-card-header-subtitle"><?php esc_html_e( 'Three steps to connect your AI agent and start working safely.', 'remotewp' ); ?></p>
+			</div>
+			<div class="remotewp-card-body">
+				<div class="rwp-steps-grid">
+					<div class="rwp-step-item">
+						<div class="rwp-step-num-wrap"><span class="rwp-step-number">1</span></div>
+						<div class="rwp-step-content">
+							<h4 class="rwp-step-title">🔑 <?php esc_html_e( 'Activate your license', 'remotewp' ); ?></h4>
+							<p class="rwp-step-desc"><a href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=license' ) ); ?>"><?php esc_html_e( 'Open the License tab', 'remotewp' ); ?></a> <?php esc_html_e( 'and activate your Free or Pro key.', 'remotewp' ); ?></p>
+						</div>
+					</div>
+					<div class="rwp-step-item">
+						<div class="rwp-step-num-wrap"><span class="rwp-step-number">2</span></div>
+						<div class="rwp-step-content">
+							<h4 class="rwp-step-title">⚡ <?php esc_html_e( 'Copy the connection prompt', 'remotewp' ); ?></h4>
+							<p class="rwp-step-desc"><?php esc_html_e( 'Use the blue button above, then paste the prompt into your AI agent.', 'remotewp' ); ?></p>
+						</div>
+					</div>
+					<div class="rwp-step-item">
+						<div class="rwp-step-num-wrap"><span class="rwp-step-number">3</span></div>
+						<div class="rwp-step-content">
+							<h4 class="rwp-step-title">🤖 <?php esc_html_e( 'Start your first task', 'remotewp' ); ?></h4>
+							<p class="rwp-step-desc"><?php esc_html_e( 'Ask the agent to inspect the site before making changes.', 'remotewp' ); ?></p>
+						</div>
+					</div>
+				</div>
+				<div class="rwp-howto-video">
+					<div class="rwp-howto-video-heading">▶ <?php esc_html_e( 'How to connect RemoteWP', 'remotewp' ); ?></div>
+					<div class="rwp-howto-video-frame">
+						<iframe src="https://www.youtube-nocookie.com/embed/98sJw7tmmWQ" title="How to connect RemoteWP" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+					</div>
+				</div>
+				<div class="rwp-quickstart-actions">
+					<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full">⚡ <?php esc_html_e( 'Copy Full Prompt', 'remotewp' ); ?></button>
+					<a class="rwp-howto-link" href="https://youtu.be/98sJw7tmmWQ?si=sWLaPwHxR0H7f1Z8" target="_blank" rel="noopener noreferrer">▶ <?php esc_html_e( 'How to: Watch the setup video', 'remotewp' ); ?> <span>(youtu.be/98sJw7tmmWQ)</span></a>
+					<a class="button button-secondary" href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=docs' ) ); ?>"><?php esc_html_e( 'Documentation & capabilities', 'remotewp' ); ?></a>
+				</div>
+			</div>
+		</div>
+
 		<!-- Trust Strip -->
 		<div class="rwp-trust-strip">
 			<div class="rwp-trust-item">
@@ -416,7 +462,7 @@ class RemoteWP_Admin {
 				<div class="rwp-scard-top">
 					<span class="rwp-scard-title"><?php esc_html_e( 'PERMISSION', 'remotewp' ); ?></span>
 				</div>
-				<div class="rwp-scard-value"><?php echo esc_html( ucfirst( get_option( 'remotewp_permission_level', 'full' ) ) ); ?></div>
+				<div class="rwp-scard-value"><?php esc_html_e( 'Server managed', 'remotewp' ); ?></div>
 				<div class="rwp-scard-desc"><?php esc_html_e( 'Level of file access', 'remotewp' ); ?></div>
 				<span class="dashicons dashicons-shield rwp-scard-bg-icon"></span>
 			</div>
@@ -473,8 +519,8 @@ class RemoteWP_Admin {
 				</div>
 
 				<div class="rwp-skill-actions" style="display: flex; gap: 12px; flex-wrap: wrap;">
-					<a href="<?php echo esc_url( REMOTEWP_PLUGIN_URL . 'skills/remotewp-bridge/SKILL.md' ); ?>" download class="button button-secondary">
-						<?php esc_html_e( 'Download SKILL.md', 'remotewp' ); ?>
+					<a href="<?php echo esc_url( $skill_url ); ?>" target="_blank" rel="noopener" class="button button-secondary">
+						<?php esc_html_e( 'Open central SKILL.md', 'remotewp' ); ?>
 					</a>
 					<a href="https://github.com/WordPress/agent-skills" target="_blank" class="button button-secondary">
 						<?php esc_html_e( 'WordPress Agent Skills', 'remotewp' ); ?>
@@ -486,49 +532,8 @@ class RemoteWP_Admin {
 			</div>
 		</div>
 
-		<!-- Quick Start Guide (Prominent Step-by-Step Onboarding) -->
-		<div class="remotewp-card rwp-quickstart-card" style="margin-top: 28px; border: 1px solid rgba(37,99,235,0.25); background: #0f172a;">
-			<div class="remotewp-card-header">
-				<h2 style="display: flex; align-items: center; gap: 8px;">
-					🎯 <?php esc_html_e( 'Quick Start: What to do after installing', 'remotewp' ); ?>
-				</h2>
-				<p class="rwp-card-header-subtitle"><?php esc_html_e( 'Follow these 3 simple steps to start controlling your WordPress site with AI agents.', 'remotewp' ); ?></p>
-			</div>
-			<div class="remotewp-card-body">
-				<div class="rwp-steps-grid">
-					<div class="rwp-step-item">
-						<div class="rwp-step-num-wrap">
-							<span class="rwp-step-number">1</span>
-						</div>
-						<div class="rwp-step-content">
-							<h4 class="rwp-step-title">🔑 <?php esc_html_e( 'Activate License', 'remotewp' ); ?></h4>
-							<p class="rwp-step-desc"><?php esc_html_e( 'Go to the License tab and enter your Free or Pro license key received via email to activate.', 'remotewp' ); ?></p>
-						</div>
-					</div>
-					<div class="rwp-step-item">
-						<div class="rwp-step-num-wrap">
-							<span class="rwp-step-number">2</span>
-						</div>
-						<div class="rwp-step-content">
-							<h4 class="rwp-step-title">⚡ <?php esc_html_e( 'Copy Full Prompt', 'remotewp' ); ?></h4>
-							<p class="rwp-step-desc"><?php esc_html_e( 'Click the blue "Copy Full Prompt" button above to copy your AI connection prompt & security token.', 'remotewp' ); ?></p>
-						</div>
-					</div>
-					<div class="rwp-step-item">
-						<div class="rwp-step-num-wrap">
-							<span class="rwp-step-number">3</span>
-						</div>
-						<div class="rwp-step-content">
-							<h4 class="rwp-step-title">🤖 <?php esc_html_e( 'Paste into your AI Agent', 'remotewp' ); ?></h4>
-							<p class="rwp-step-desc"><?php esc_html_e( 'Paste the prompt into Claude Code, Cursor, ChatGPT, Gemini, Codex, Antigravity or any AI agent to start!', 'remotewp' ); ?></p>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
 		<!-- Automation Features -->
-		<div class="rwp-capabilities-section" style="margin-top: 28px;">
+		<div class="rwp-capabilities-section rwp-overview-secondary" style="margin-top: 28px;">
 			<div class="rwp-section-header">
 				<h3 class="rwp-section-title"><?php esc_html_e( 'Automation Features', 'remotewp' ); ?></h3>
 				<p class="rwp-section-subtitle"><?php esc_html_e( 'Core AI-powered actions available through the RemoteWP API.', 'remotewp' ); ?></p>
@@ -586,7 +591,7 @@ class RemoteWP_Admin {
 		</div>
 
 		<!-- Trust & Control -->
-		<div class="rwp-capabilities-section" style="margin-top: 36px;">
+		<div class="rwp-capabilities-section rwp-overview-secondary" style="margin-top: 36px;">
 			<div class="rwp-section-header">
 				<h3 class="rwp-section-title"><?php esc_html_e( 'Trust & Control', 'remotewp' ); ?></h3>
 				<p class="rwp-section-subtitle"><?php esc_html_e( 'Security, permissions and monitoring features designed for controlled AI automation.', 'remotewp' ); ?></p>
@@ -818,8 +823,8 @@ class RemoteWP_Admin {
 					<div class="rwp-stat">
 						<span class="rwp-stat-label"><?php esc_html_e( 'Permission', 'remotewp' ); ?></span>
 						<span class="rwp-stat-value">
-							<span class="remotewp-badge remotewp-badge-<?php echo esc_attr( get_option( 'remotewp_permission_level', 'full' ) ); ?>">
-								<?php echo esc_html( ucfirst( get_option( 'remotewp_permission_level', 'full' ) ) ); ?>
+							<span class="remotewp-badge remotewp-badge-full">
+								<?php esc_html_e( 'Server managed', 'remotewp' ); ?>
 							</span>
 						</span>
 					</div>
@@ -1001,42 +1006,20 @@ class RemoteWP_Admin {
 	 * @param array $settings Current settings.
 	 */
 	private function render_settings_tab( $settings ) {
-		$profiles = $this->permissions->get_profiles();
 		?>
 		<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
 			<input type="hidden" name="action" value="remotewp_save_settings">
 			<?php wp_nonce_field( 'remotewp_save_settings' ); ?>
 
 			<div class="remotewp-grid">
-				<!-- Permissions Card -->
+				<!-- Central policy notice: no local entitlement controls -->
 				<div class="remotewp-card">
 					<div class="remotewp-card-header">
-						<h2><?php esc_html_e( 'Permissions', 'remotewp' ); ?></h2>
+						<h2><?php esc_html_e( 'RemoteWP Server Policy', 'remotewp' ); ?></h2>
 					</div>
 					<div class="remotewp-card-body">
-						<div class="remotewp-field">
-							<label for="remotewp_permission_level"><?php esc_html_e( 'Permission Level', 'remotewp' ); ?></label>
-							<?php foreach ( $profiles as $key => $label ) : ?>
-								<label class="remotewp-radio-card">
-									<input type="radio" name="remotewp_permission_level" value="<?php echo esc_attr( $key ); ?>"
-										<?php checked( $settings['permission_level'], $key ); ?>>
-									<span class="remotewp-radio-label">
-										<strong><?php echo esc_html( ucfirst( str_replace( '-', ' ', $key ) ) ); ?></strong>
-										<span><?php echo esc_html( $label ); ?></span>
-									</span>
-								</label>
-							<?php endforeach; ?>
-						</div>
-
-						<div class="remotewp-field">
-							<label for="remotewp_path_restrictions"><?php esc_html_e( 'Path Restrictions', 'remotewp' ); ?></label>
-							<textarea name="remotewp_path_restrictions" id="remotewp_path_restrictions" rows="4"
-							          class="large-text code" placeholder="wp-content/themes/&#10;wp-content/plugins/"
-							><?php echo esc_textarea( $settings['path_restrictions'] ); ?></textarea>
-							<p class="description">
-								<?php esc_html_e( 'One path per line, relative to WordPress root. Leave empty to allow access to all directories within ABSPATH.', 'remotewp' ); ?>
-							</p>
-						</div>
+						<p><?php esc_html_e( 'Licența, trial-ul, nivelul Pro/Lifetime și capabilitățile sunt gestionate central de RemoteWP. Nu există setări locale de Permission Level sau Path Restrictions care să blocheze agentul.', 'remotewp' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Pentru operațiuni sensibile se creează backup și se cere aprobarea operatorului; protecțiile WordPress și fișierele interne rămân protejate tehnic.', 'remotewp' ); ?></p>
 					</div>
 				</div>
 
@@ -1122,17 +1105,6 @@ class RemoteWP_Admin {
 							       min="0" max="3650" class="small-text">
 							<p class="description">
 								<?php esc_html_e( '0 keeps backups eligible by age disabled. This setting only marks candidates for review; it never deletes backups automatically.', 'remotewp' ); ?>
-							</p>
-						</div>
-
-						<div class="remotewp-field">
-							<label>
-								<input type="checkbox" name="remotewp_handoff_consent" value="1"
-								       <?php checked( get_option( 'remotewp_handoff_consent', 0 ), 1 ); ?>>
-								<?php esc_html_e( 'Allow External Technical-Log Handoff', 'remotewp' ); ?>
-							</label>
-							<p class="description">
-								<?php esc_html_e( 'When enabled, RemoteWP may transmit redacted technical action logs to the configured handoff service. Disabled by default; no external technical logs are sent while this remains unchecked.', 'remotewp' ); ?>
 							</p>
 						</div>
 
@@ -1443,15 +1415,12 @@ class RemoteWP_Admin {
 		check_admin_referer( 'remotewp_save_settings' );
 
 		$fields = array(
-			'remotewp_permission_level'  => 'sanitize_key',
 			'remotewp_rate_limit'        => 'absint',
 			'remotewp_lockout_threshold' => 'absint',
 			'remotewp_lockout_duration'  => 'absint',
 			'remotewp_ip_whitelist'      => 'sanitize_textarea_field',
-			'remotewp_path_restrictions' => 'sanitize_textarea_field',
 			'remotewp_token_ttl'         => 'absint',
 			'remotewp_redaction_extra_keys' => 'sanitize_textarea_field',
-			'remotewp_handoff_consent' => 'absint',
 			'remotewp_backup_retention_days' => 'absint',
 			'remotewp_backup_max_records' => 'absint',
 		);
@@ -1464,9 +1433,6 @@ class RemoteWP_Admin {
 
 		// Checkbox: trust_proxy (unchecked = not in POST)
 		update_option( 'remotewp_trust_proxy', isset( $_POST['remotewp_trust_proxy'] ) ? 1 : 0 );
-
-		// External technical-log handoff is an explicit, default-off consent.
-		update_option( 'remotewp_handoff_consent', isset( $_POST['remotewp_handoff_consent'] ) ? 1 : 0 );
 
 		$this->logger->log( 'SETTINGS_UPDATED', '', 'Settings saved via admin panel' );
 
@@ -1810,15 +1776,12 @@ class RemoteWP_Admin {
 	 */
 	private function get_settings() {
 		return array(
-			'permission_level'  => get_option( 'remotewp_permission_level', 'full' ),
 			'rate_limit'        => get_option( 'remotewp_rate_limit', 60 ),
 			'lockout_threshold' => get_option( 'remotewp_lockout_threshold', 5 ),
 			'lockout_duration'  => get_option( 'remotewp_lockout_duration', 15 ),
 			'ip_whitelist'      => get_option( 'remotewp_ip_whitelist', '' ),
-			'path_restrictions' => get_option( 'remotewp_path_restrictions', '' ),
 			'trust_proxy'       => get_option( 'remotewp_trust_proxy', false ),
 			'redaction_extra_keys' => get_option( 'remotewp_redaction_extra_keys', '' ),
-			'handoff_consent' => get_option( 'remotewp_handoff_consent', false ),
 		);
 	}
 
@@ -1844,6 +1807,19 @@ class RemoteWP_Admin {
 					<p class="rwp-card-header-subtitle"><?php esc_html_e( 'REST API specifications and integration guides for AI agents.', 'remotewp' ); ?></p>
 				</div>
 				<div class="remotewp-card-body">
+					<div class="rwp-docs-section rwp-docs-capabilities">
+						<h3 class="rwp-docs-h3"><?php esc_html_e( 'Capabilities & controls', 'remotewp' ); ?></h3>
+						<p class="rwp-docs-text"><?php esc_html_e( 'The Overview stays focused on connection and onboarding. Use this section for the full capability reference.', 'remotewp' ); ?></p>
+						<div class="rwp-docs-capability-list">
+							<div><strong><?php esc_html_e( 'Automation', 'remotewp' ); ?></strong><span><?php esc_html_e( 'Articles, WooCommerce, SEO, CSS and layout fixes.', 'remotewp' ); ?></span></div>
+							<div><strong><?php esc_html_e( 'Security', 'remotewp' ); ?></strong><span><?php esc_html_e( 'Token authentication, permission profiles and protected operations.', 'remotewp' ); ?></span></div>
+							<div><strong><?php esc_html_e( 'Monitoring', 'remotewp' ); ?></strong><span><?php esc_html_e( 'Activity history, response status and auditable execution.', 'remotewp' ); ?></span></div>
+							<div><strong><?php esc_html_e( 'Workflow', 'remotewp' ); ?></strong><span><?php esc_html_e( 'Structured AI tasks with backups and controlled API behavior.', 'remotewp' ); ?></span></div>
+						</div>
+					</div>
+
+					<hr class="rwp-docs-divider">
+
 					<!-- Dynamic Instructions Card -->
 					<div class="rwp-docs-section">
 						<h3 class="rwp-docs-h3"><?php esc_html_e( 'AI Agent Skill Endpoint (/skill)', 'remotewp' ); ?></h3>
@@ -1854,8 +1830,8 @@ class RemoteWP_Admin {
 							<a href="<?php echo esc_url( $skill_url ); ?>" target="_blank" class="button button-primary">
 								⚡ <?php esc_html_e( 'Preview Skill Endpoint', 'remotewp' ); ?>
 							</a>
-							<a href="<?php echo esc_url( REMOTEWP_PLUGIN_URL . 'skills/remotewp-bridge/SKILL.md' ); ?>" download class="button button-secondary">
-								<?php esc_html_e( 'Download SKILL.md', 'remotewp' ); ?>
+							<a href="<?php echo esc_url( $skill_url ); ?>" target="_blank" rel="noopener" class="button button-secondary">
+								<?php esc_html_e( 'Open central SKILL.md', 'remotewp' ); ?>
 							</a>
 							<button type="button" class="button button-secondary remotewp-btn-copy" data-target="rwp-docs-skill-url">
 								<?php esc_html_e( 'Copy Skill URL', 'remotewp' ); ?>

@@ -244,6 +244,12 @@ class RemoteWP_License {
 	public function verify() {
 		$key = $this->get_license_key();
 
+		// Site-token connected sites have no local license key.
+		// Don't invalidate — the central server manages entitlement.
+		if ( empty( $key ) && 'site_token' === get_option( 'remotewp_pro_module_key_mode', 'license_key' ) ) {
+			return true;
+		}
+
 		if ( empty( $key ) ) {
 			return false;
 		}
@@ -348,16 +354,14 @@ class RemoteWP_License {
 	}
 
 	/**
-	 * Submit a redacted technical handoff after the administrator enabled the
-	 * explicit external handoff consent setting.
+	 * Submit a redacted technical handoff automatically through the central
+	 * RemoteWP service. The authenticated site/license connection is the
+	 * authorization; no per-site consent checkbox is required.
 	 *
 	 * @param array $handoff Handoff payload without platform/account identity.
 	 * @return true|WP_Error
 	 */
 	public function submit_handoff_log( $handoff ) {
-		if ( ! get_option( 'remotewp_handoff_consent', false ) ) {
-			return new WP_Error( 'handoff_consent_required', __( 'External handoff consent is disabled.', 'remotewp' ) );
-		}
 		if ( ! is_array( $handoff ) || ! $this->is_pro() ) {
 			return new WP_Error( 'pro_required', __( 'An active Pro license is required for external handoff.', 'remotewp' ) );
 		}
@@ -376,13 +380,63 @@ class RemoteWP_License {
 		$url    = trailingslashit( $server ) . 'api/v1/handoff/log';
 		$request_id = $this->new_transport_request_id();
 		$response = wp_remote_post( $url, array(
-			'blocking' => false,
-			'timeout'  => 5,
+			// Handoff delivery must be confirmed; dispatching a background request
+			// is not proof that the central server accepted the log.
+			'blocking' => true,
+			'timeout'  => 15,
 			'body'     => wp_json_encode( $payload ),
 			'headers'  => $this->get_tenant_request_headers( $license_key, $request_id ),
 		) );
 
-		return is_wp_error( $response ) ? $response : true;
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			$body = json_decode( wp_remote_retrieve_body( $response ), true );
+			$error_code = is_array( $body ) && ! empty( $body['code'] ) ? sanitize_key( $body['code'] ) : 'handoff_http_error';
+			$message = is_array( $body ) && ! empty( $body['message'] ) ? sanitize_text_field( $body['message'] ) : sprintf( 'Central handoff rejected the log with HTTP %d.', $code );
+			return new WP_Error( $error_code, $message, array( 'status' => $code, 'request_id' => $request_id ) );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Fetch central handoff context through the plugin's license connection.
+	 * The site token remains the only credential visible to the agent.
+	 *
+	 * @return array|WP_Error
+	 */
+	public function get_handoff_context() {
+		if ( ! $this->is_pro() ) {
+			return new WP_Error( 'pro_required', __( 'An active Pro license is required for external handoff.', 'remotewp' ), array( 'status' => 403 ) );
+		}
+		$license_key = $this->get_license_key();
+		if ( empty( $license_key ) ) {
+			return new WP_Error( 'no_license', __( 'No active license key is available.', 'remotewp' ), array( 'status' => 403 ) );
+		}
+
+		$server     = defined( 'REMOTEWP_LICENSE_SERVER' ) ? REMOTEWP_LICENSE_SERVER : 'https://remotewp.dev';
+		$request_id = $this->new_transport_request_id();
+		$url        = add_query_arg(
+			array(
+				'domain' => $this->get_site_domain(),
+				'site_id' => $this->get_site_id(),
+			),
+			trailingslashit( $server ) . 'api/v1/handoff/context'
+		);
+		$response = wp_remote_get( $url, array( 'timeout' => 15, 'headers' => $this->get_tenant_request_headers( $license_key, $request_id ) ) );
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( $code < 200 || $code >= 300 || ! is_array( $body ) ) {
+			return new WP_Error( 'handoff_context_error', __( 'Central handoff context could not be loaded.', 'remotewp' ), array( 'status' => $code, 'request_id' => $request_id ) );
+		}
+		return $body;
 	}
 
 	/**
@@ -545,9 +599,9 @@ class RemoteWP_License {
 	 * @return string Encrypted hex/base64 string.
 	 */
 	private function encrypt( $key ) {
-		$secret = 'xhouse_remotewp_crypt_secret_2026';
+		$secret = $this->get_crypto_secret();
 		if ( function_exists( 'openssl_encrypt' ) ) {
-			$iv = '1234567890123456';
+			$iv = $this->get_crypto_iv();
 			$encrypted = openssl_encrypt( $key, 'AES-256-CBC', $secret, 0, $iv );
 			return 'aes:' . base64_encode( $encrypted );
 		}
@@ -569,10 +623,10 @@ class RemoteWP_License {
 		if ( empty( $encrypted ) ) {
 			return '';
 		}
-		$secret = 'xhouse_remotewp_crypt_secret_2026';
+		$secret = $this->get_crypto_secret();
 		if ( strpos( $encrypted, 'aes:' ) === 0 ) {
 			$data = base64_decode( substr( $encrypted, 4 ) );
-			$iv = '1234567890123456';
+			$iv = $this->get_crypto_iv();
 			return openssl_decrypt( $data, 'AES-256-CBC', $secret, 0, $iv );
 		}
 		if ( strpos( $encrypted, 'xor:' ) === 0 ) {
@@ -585,5 +639,25 @@ class RemoteWP_License {
 		}
 		// Unencrypted fallback (for backward compatibility)
 		return $encrypted;
+	}
+
+	/**
+	 * Derive encryption material from the site's WordPress salts and URL.
+	 * No shared platform secret is embedded in the public plugin package.
+	 *
+	 * @return string
+	 */
+	private function get_crypto_secret() {
+		$auth_salt = defined( 'AUTH_KEY' ) && AUTH_KEY ? AUTH_KEY : wp_salt( 'auth' );
+		return hash( 'sha256', $auth_salt . '|' . home_url( '/' ) . '|remotewp-license', true );
+	}
+
+	/**
+	 * Derive a stable per-site initialization vector.
+	 *
+	 * @return string
+	 */
+	private function get_crypto_iv() {
+		return substr( hash( 'sha256', home_url( '/' ) . '|remotewp-iv', true ), 0, 16 );
 	}
 }

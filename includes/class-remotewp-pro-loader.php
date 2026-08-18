@@ -38,6 +38,9 @@ class RemoteWP_Pro_Loader {
 	 */
 	const HASH_FILE = 'module.hash';
 
+	/** Filename storing which server-issued material decrypts the module. */
+	const KEY_MODE_OPTION = 'remotewp_pro_module_key_mode';
+
 	/**
 	 * Option key for consecutive verification failures.
 	 */
@@ -52,6 +55,9 @@ class RemoteWP_Pro_Loader {
 	 * API endpoint for fetching the Pro module.
 	 */
 	private $api_url = 'https://remotewp.dev/wp-json/remotewp-license/v1/pro-module';
+
+	/** Server-authoritative delivery path for connected sites. */
+	private $site_token_api_url = 'https://remotewp.dev/wp-json/remotewp-license/v1/pro-module/site-token';
 
 	/**
 	 * @var RemoteWP_License
@@ -110,7 +116,11 @@ class RemoteWP_Pro_Loader {
 	 * @return string|false 32-byte binary key, or false if no license.
 	 */
 	private function derive_key() {
-		$license_key = $this->license->get_license_key();
+		$key_mode    = (string) get_option( self::KEY_MODE_OPTION, 'license_key' );
+		$license_key = 'site_token' === $key_mode ? (string) get_option( 'remotewp_api_token', '' ) : $this->license->get_license_key();
+		if ( empty( $license_key ) && 'site_token' !== $key_mode ) {
+			$license_key = (string) get_option( 'remotewp_api_token', '' );
+		}
 		$domain      = $this->get_site_domain();
 
 		if ( empty( $license_key ) || empty( $domain ) ) {
@@ -144,28 +154,54 @@ class RemoteWP_Pro_Loader {
 	public function fetch_module() {
 		$license_key = $this->license->get_license_key();
 		$domain      = $this->get_site_domain();
+		$site_token  = (string) get_option( 'remotewp_api_token', '' );
+		$requests    = array();
 
-		if ( empty( $license_key ) ) {
-			return new WP_Error( 'no_license', __( 'No license key available.', 'remotewp' ) );
+		if ( ! empty( $license_key ) ) {
+			$requests[] = array(
+				'url'     => $this->api_url,
+				'headers' => array( 'Content-Type' => 'application/json' ),
+				'body'    => array( 'license_key' => $license_key, 'domain' => $domain, 'plugin_version' => REMOTEWP_VERSION ),
+				'key_mode'=> 'license_key',
+			);
+		}
+		if ( ! empty( $site_token ) ) {
+			$requests[] = array(
+				'url'     => $this->site_token_api_url,
+				'headers' => array( 'Content-Type' => 'application/json', 'X-RemoteWP-Token' => $site_token ),
+				'body'    => array( 'domain' => $domain, 'plugin_version' => REMOTEWP_VERSION ),
+				'key_mode'=> 'site_token',
+			);
 		}
 
-		$response = wp_remote_post( $this->api_url, array(
-			'timeout' => 30,
-			'body'    => wp_json_encode( array(
-				'license_key' => $license_key,
-				'domain'      => $domain,
-			) ),
-			'headers' => array(
-				'Content-Type' => 'application/json',
-			),
-		) );
+		if ( empty( $requests ) ) {
+			return new WP_Error( 'site_not_connected', __( 'No connected RemoteWP site token is available.', 'remotewp' ) );
+		}
+
+		$response = false;
+		$body    = array();
+		$key_mode = 'license_key';
+		foreach ( $requests as $request ) {
+			$response = wp_remote_post( $request['url'], array(
+				'timeout' => 30,
+				'body'    => wp_json_encode( $request['body'] ),
+				'headers' => $request['headers'],
+			) );
+			if ( is_wp_error( $response ) ) {
+				continue;
+			}
+			$body = json_decode( wp_remote_retrieve_body( $response ), true );
+			if ( 200 === wp_remote_retrieve_response_code( $response ) && ! empty( $body['success'] ) && ! empty( $body['module'] ) ) {
+				$key_mode = $request['key_mode'];
+				break;
+			}
+		}
 
 		if ( is_wp_error( $response ) ) {
-			return new WP_Error( 'connection_failed', __( 'Could not connect to the license server.', 'remotewp' ) );
+			return new WP_Error( 'connection_failed', __( 'Could not connect to the RemoteWP server.', 'remotewp' ) );
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( 200 !== $code || empty( $body['success'] ) || empty( $body['module'] ) ) {
 			$message = $body['message'] ?? __( 'Failed to fetch Pro module.', 'remotewp' );
@@ -196,6 +232,14 @@ class RemoteWP_Pro_Loader {
 		// Store hash for version tracking
 		if ( ! empty( $body['hash'] ) ) {
 			file_put_contents( $this->get_hash_path(), $body['hash'] );
+		}
+		update_option( self::KEY_MODE_OPTION, sanitize_key( $body['key_mode'] ?? $key_mode ) );
+		if ( ! empty( $body['tier'] ) ) {
+			update_option( 'remotewp_license_status', 'active' );
+			update_option( 'remotewp_license_tier', sanitize_key( $body['tier'] ) );
+		}
+		if ( isset( $body['trial_expires'] ) ) {
+			update_option( 'remotewp_license_trial_expires', sanitize_text_field( $body['trial_expires'] ) );
 		}
 
 		// Reset failure counter
@@ -243,10 +287,46 @@ class RemoteWP_Pro_Loader {
 		// Write to a temporary file and include it (safer than eval)
 		$tmp_file = $this->get_module_dir() . '/module.tmp.php';
 		file_put_contents( $tmp_file, $php_code );
-		include_once $tmp_file;
+		// Use include rather than include_once so a bounded refresh in the same
+		// request can load the newly fetched module after a stale-cache failure.
+		include $tmp_file;
 		@unlink( $tmp_file );
 
 		return true;
+	}
+
+	/**
+	 * Load the cached module, or refresh it once when the cache is missing or
+	 * cannot produce the Pro filesystem class. This is intentionally bounded to
+	 * one refresh attempt per request so a broken license server cannot create a
+	 * request loop. Active Pro/Lifetime/trial sites must recover automatically;
+	 * users must not be asked for WooCommerce credentials or hidden settings.
+	 *
+	 * @return bool True when the Pro module and its filesystem class are loaded.
+	 */
+	public function load_or_refresh_module() {
+		$plugin_version = defined( 'REMOTEWP_VERSION' ) ? REMOTEWP_VERSION : 'unknown';
+		$refresh_marker = (string) get_option( 'remotewp_pro_module_refresh_version', '' );
+		if ( $plugin_version !== $refresh_marker ) {
+			$version_refresh = $this->fetch_module();
+			if ( ! is_wp_error( $version_refresh ) ) {
+				update_option( 'remotewp_pro_module_refresh_version', $plugin_version );
+			}
+		}
+
+		$loaded = $this->load_module();
+		if ( $loaded && class_exists( 'RemoteWP_FS_API_Pro' ) ) {
+			return true;
+		}
+
+		$refresh = $this->fetch_module();
+		if ( is_wp_error( $refresh ) ) {
+			error_log( '[RemoteWP] Pro module refresh failed: ' . $refresh->get_error_code() );
+			return false;
+		}
+
+		$loaded = $this->load_module();
+		return $loaded && class_exists( 'RemoteWP_FS_API_Pro' );
 	}
 
 	/**
@@ -269,6 +349,7 @@ class RemoteWP_Pro_Loader {
 		}
 
 		delete_option( self::OPT_FAIL_COUNT );
+		delete_option( self::KEY_MODE_OPTION );
 	}
 
 	/**

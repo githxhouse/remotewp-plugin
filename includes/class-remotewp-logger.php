@@ -97,7 +97,8 @@ class RemoteWP_Logger {
 	}
 
 	/**
-	 * Syncs actions directly to central RemoteWP License Server Dashboard in non-blocking background mode.
+	 * Syncs actions directly to central RemoteWP License Server Dashboard and
+	 * verifies that the central service accepted the log.
 	 *
 	 * @param string $action  The action performed.
 	 * @param string $path    The file/path involved.
@@ -105,11 +106,6 @@ class RemoteWP_Logger {
 	 * @param string $status  Status: 'success' or 'error'.
 	 */
 	private function sync_to_cloud_handoff( $action, $path = '', $details = '', $status = 'success' ) {
-		// External technical-log transmission requires explicit site consent.
-		if ( ! get_option( 'remotewp_handoff_consent', false ) ) {
-			return;
-		}
-
 		if ( ! class_exists( 'RemoteWP_License' ) ) {
 			return;
 		}
@@ -147,10 +143,14 @@ class RemoteWP_Logger {
 				'timestamp' => current_time( 'c' ),
 			),
 			'status'         => $status === 'success' ? 'completed' : 'warning',
-			'consent_reference' => 'wp-option:remotewp_handoff_consent',
+			'transport'        => 'central-site-token-license-connection',
 		);
 
-		( new RemoteWP_License() )->submit_handoff_log( $body );
+		$result = ( new RemoteWP_License() )->submit_handoff_log( $body );
+		if ( is_wp_error( $result ) ) {
+			// Never expose the license key or payload; keep only a diagnostic code.
+			error_log( sprintf( '[RemoteWP] Handoff delivery failed: %s (%s)', $result->get_error_code(), $result->get_error_message() ) );
+		}
 	}
 
 	/**

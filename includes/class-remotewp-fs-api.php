@@ -747,17 +747,18 @@ class RemoteWP_FS_API {
 			),
 			'remotewp'  => array(
 				'version' => REMOTEWP_VERSION,
-				'tier'    => 'free',
+				'tier'    => $this->license ? $this->license->get_tier() : get_option( 'remotewp_license_tier', 'free' ),
 				'upgrade' => 'https://remotewp.dev/pricing',
 			),
 		) );
 	}
 
 	/**
-	 * GET /skill — Serve the dynamic SKILL.md agent skill pack resolved from Central Cloud Server.
+	 * GET /skill — Proxy the canonical agent skill pack from Central Cloud Server.
 	 *
-	 * Queries the central RemoteWP Cloud Server (api.remotewp.dev) with active site plugins
-	 * to return the master skill pack dynamically without shipping raw skill files in the plugin ZIP.
+	 * Queries the central RemoteWP Cloud Server with the site's detected stack. The plugin
+	 * must never become a source of truth for agent instructions and therefore has no local
+	 * skill fallback.
 	 *
 	 * @param WP_REST_Request $request Request object.
 	 * @return WP_REST_Response|WP_Error
@@ -765,7 +766,6 @@ class RemoteWP_FS_API {
 	public function get_skill( $request ) {
 		$api_base = rest_url( REMOTEWP_API_NAMESPACE . '/' );
 		$tier     = defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO ? 'pro' : 'free';
-		$resolve  = $request instanceof WP_REST_Request ? sanitize_text_field( (string) $request->get_param( 'resolve' ) ) : '';
 
 		// Auto-detect active site capabilities and plugins
 		if ( ! function_exists( 'is_plugin_active' ) ) {
@@ -783,67 +783,44 @@ class RemoteWP_FS_API {
 			$detected_plugins[] = 'wpbakery';
 		}
 
-		if ( 'cloud' === $resolve ) {
-			$cloud_url = 'https://remotewp.dev/wp-json/remotewp-license/v1/skills/resolve';
-			$response  = wp_remote_post(
-				$cloud_url,
-				array(
-					'timeout' => 2,
-					'headers' => array( 'Content-Type' => 'application/json' ),
-					'body'    => wp_json_encode(
-						array(
-							'site_url'       => home_url(),
-							'api_base'       => $api_base,
-							'active_plugins' => $detected_plugins,
-							'tier'           => $tier,
-						)
-					),
-				)
-			);
-
-			if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
-				$body = wp_remote_retrieve_body( $response );
-				$json = json_decode( $body, true );
-				if ( ! empty( $json['success'] ) && ! empty( $json['skill'] ) ) {
-					$this->logger->log( 'SKILL_CLOUD', implode( ', ', $json['loaded_skills'] ?? array() ), 'Cloud skill pack served' );
-					return rest_ensure_response(
-						array(
-							'success'       => true,
-							'format'        => 'markdown',
-							'version'       => REMOTEWP_VERSION,
-							'tier'          => $tier,
-							'source'        => 'cloud',
-							'loaded_skills' => $json['loaded_skills'] ?? array(),
-							'skill'         => $json['skill'],
-						)
-					);
-				}
-			}
-		}
-
-		// Fallback: Local Base Skill
-		$skill_file = REMOTEWP_PLUGIN_DIR . 'skills/remotewp-bridge/SKILL.md';
-		if ( ! file_exists( $skill_file ) ) {
-			return new WP_Error( 'skill_not_found', __( 'Skill pack file not found.', 'remotewp' ), array( 'status' => 404 ) );
-		}
-
-		$content = file_get_contents( $skill_file );
-		$content = str_replace(
-			array( '{{API_BASE}}', '{{SITE_URL}}', '{{TIER}}' ),
-			array( $api_base, home_url(), $tier ),
-			$content
+		$cloud_url = 'https://remotewp.dev/wp-json/remotewp-license/v1/skills/resolve';
+		$response  = wp_remote_post(
+			$cloud_url,
+			array(
+				'timeout' => 5,
+				'headers' => array( 'Content-Type' => 'application/json' ),
+				'body'    => wp_json_encode(
+					array(
+						'site_url'       => home_url(),
+						'api_base'       => $api_base,
+						'active_plugins' => $detected_plugins,
+						'tier'           => $tier,
+					)
+				),
+			)
 		);
 
-		$this->logger->log( 'SKILL_LOCAL', 'Base', 'Local fallback skill pack served' );
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error( 'central_skill_unavailable', __( 'Central RemoteWP skill server is unavailable.', 'remotewp' ), array( 'status' => 503 ) );
+		}
 
+		$body = wp_remote_retrieve_body( $response );
+		$json = json_decode( $body, true );
+		if ( wp_remote_retrieve_response_code( $response ) !== 200 || empty( $json['success'] ) || empty( $json['skill'] ) ) {
+			return new WP_Error( 'central_skill_unavailable', __( 'Central RemoteWP skill server returned an invalid response.', 'remotewp' ), array( 'status' => 503 ) );
+		}
+
+		$this->logger->log( 'SKILL_CLOUD', implode( ', ', $json['loaded_skills'] ?? array() ), 'Central skill pack served' );
 		return rest_ensure_response(
 			array(
-				'success' => true,
-				'format'  => 'markdown',
-				'version' => REMOTEWP_VERSION,
-				'tier'    => $tier,
-				'source'  => 'local_fallback',
-				'skill'   => $content,
+				'success'       => true,
+				'format'        => 'markdown',
+				'version'       => REMOTEWP_VERSION,
+				'tier'          => $tier,
+				'source'        => 'central_server',
+				'canonical_url' => 'https://remotewp.dev/api/v1/skills/resolve',
+				'loaded_skills' => $json['loaded_skills'] ?? array(),
+				'skill'         => $json['skill'],
 			)
 		);
 	}

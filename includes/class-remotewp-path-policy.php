@@ -29,7 +29,13 @@ class RemoteWP_Path_Policy {
 			}
 		}
 		if ( '' === $relative ) {
-			return $is_write ? self::write_error( $base, $base ) : $base;
+			if ( $is_write ) {
+				$write_check = self::write_error( $base, $base );
+				if ( is_wp_error( $write_check ) ) {
+					return $write_check;
+				}
+			}
+			return $base;
 		}
 
 		$input = $base . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $relative );
@@ -51,7 +57,13 @@ class RemoteWP_Path_Policy {
 			if ( is_wp_error( $restriction_check ) ) {
 				return $restriction_check;
 			}
-			return $is_write ? self::write_error( $resolved, $base ) : $resolved;
+			if ( $is_write ) {
+				$write_check = self::write_error( $resolved, $base );
+				if ( is_wp_error( $write_check ) ) {
+					return $write_check;
+				}
+			}
+			return $resolved;
 		}
 
 		if ( $must_exist ) {
@@ -75,7 +87,13 @@ class RemoteWP_Path_Policy {
 		if ( is_wp_error( $restriction_check ) ) {
 			return $restriction_check;
 		}
-		return $is_write ? self::write_error( $candidate, $base ) : $candidate;
+		if ( $is_write ) {
+			$write_check = self::write_error( $candidate, $base );
+			if ( is_wp_error( $write_check ) ) {
+				return $write_check;
+			}
+		}
+		return $candidate;
 	}
 
 	public static function is_protected( $path ) {
@@ -125,22 +143,10 @@ class RemoteWP_Path_Policy {
 	}
 
 	private static function restriction_check( $path, $base ) {
-		$restrictions = get_option( 'remotewp_path_restrictions', '' );
-		if ( is_array( $restrictions ) ) {
-			$allowed_paths = isset( $restrictions['allowed_paths'] ) ? (array) $restrictions['allowed_paths'] : array();
-		} else {
-			$allowed_paths = array_filter( array_map( 'trim', explode( "\n", (string) $restrictions ) ) );
-		}
-		if ( empty( $allowed_paths ) ) {
-			return true;
-		}
-		foreach ( $allowed_paths as $allowed ) {
-			$allowed_path = realpath( $base . DIRECTORY_SEPARATOR . ltrim( str_replace( '\\', '/', $allowed ), '/' ) );
-			if ( $allowed_path && self::within( $path, $allowed_path ) ) {
-				return true;
-			}
-		}
-		return new WP_Error( 'path_restricted', 'Path is outside the configured allowed paths.', array( 'status' => 403 ) );
+		// Path allowlists are not a customer-editable WordPress setting. The
+		// central RemoteWP server owns entitlement and operation policy; this
+		// layer keeps only the non-negotiable protected/core/symlink checks above.
+		return true;
 	}
 
 	private static function write_error( $path, $base ) {

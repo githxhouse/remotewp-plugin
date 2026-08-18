@@ -46,7 +46,7 @@ class RemoteWP_V2_Token_Store {
 			'site_id'           => self::current_site_id(),
 			'label'             => sanitize_text_field( $label ),
 			'scopes'            => $scopes,
-			'permission_profile'=> sanitize_key( get_option( 'remotewp_permission_level', 'read-only' ) ),
+			'permission_profile'=> class_exists( 'RemoteWP_FS_API_Pro' ) ? 'full' : 'read-only',
 			'created_by'        => function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0,
 			'created_at'        => time(),
 			'last_used_at'      => 0,
@@ -95,7 +95,7 @@ class RemoteWP_V2_Token_Store {
 			$now                  = time();
 			$record['site_id']    = $current_site_id;
 			$record['token_prefix'] = ! empty( $record['token_prefix'] ) ? $record['token_prefix'] : substr( $token, 0, 12 );
-			$record['permission_profile'] = ! empty( $record['permission_profile'] ) ? $record['permission_profile'] : sanitize_key( get_option( 'remotewp_permission_level', 'read-only' ) );
+			$record['permission_profile'] = ! empty( $record['permission_profile'] ) ? $record['permission_profile'] : ( class_exists( 'RemoteWP_FS_API_Pro' ) ? 'full' : 'read-only' );
 			$record['created_by']         = isset( $record['created_by'] ) ? (int) $record['created_by'] : 0;
 			$last_used_at                 = isset( $record['last_used_at'] ) ? (int) $record['last_used_at'] : 0;
 			if ( $now - $last_used_at >= 60 || empty( $record['last_used_at'] ) ) {

@@ -11,10 +11,10 @@ class RemoteWP_Connection_Context {
 	public static function build() {
 		$site_url = function_exists( 'home_url' ) ? home_url( '/' ) : (string) get_option( 'siteurl', '' );
 		$host     = (string) wp_parse_url( $site_url, PHP_URL_HOST );
-		$profile  = get_option( 'remotewp_permission_level', 'full' );
 		$license  = class_exists( 'RemoteWP_License' ) ? new RemoteWP_License() : null;
 		$tier     = $license ? $license->get_tier() : get_option( 'remotewp_license_tier', 'free' );
-		$is_pro   = $license ? $license->is_pro() : 'free' !== strtolower( (string) $tier );
+		$is_pro   = class_exists( 'RemoteWP_FS_API_Pro' ) || ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL );
+		$profile  = $is_pro ? 'full' : 'read-only';
 		$allowed  = self::profile_operations( $profile );
 
 		$scopes = array();

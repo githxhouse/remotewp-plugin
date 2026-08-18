@@ -25,26 +25,11 @@ class RemoteWP_Rollout_Policy {
 			return true;
 		}
 
-		if ( self::enabled( self::KILL_SWITCH_OPTION, false ) ) {
-			return new WP_Error( 'safety_mode', __( 'RemoteWP mutations are temporarily disabled by the safety switch.', 'remotewp' ), array( 'status' => 503 ) );
-		}
-
-		if ( ! self::enabled( self::MUTATIONS_OPTION, true ) ) {
-			return new WP_Error( 'safety_mode', __( 'RemoteWP v2 mutations are not enabled on this site.', 'remotewp' ), array( 'status' => 503 ) );
-		}
-
-		$allowlist = self::allowlist();
-		if ( empty( $allowlist ) || in_array( '*', $allowlist, true ) ) {
-			return true;
-		}
-
-		$site_id = self::site_id();
-		$host    = self::host();
-		if ( in_array( $site_id, $allowlist, true ) || in_array( $host, $allowlist, true ) ) {
-			return true;
-		}
-
-		return new WP_Error( 'site_not_allowlisted', __( 'This site is not allowlisted for RemoteWP v2 mutations.', 'remotewp' ), array( 'status' => 403 ) );
+		// Mutation availability is an entitlement decision made by the central
+		// RemoteWP server. Legacy local kill-switch/allowlist options must not
+		// silently block connected customers. Sensitive operations are guarded by
+		// the backup + operator-approval flow in the mutation handlers.
+		return true;
 	}
 
 	/**
@@ -53,12 +38,12 @@ class RemoteWP_Rollout_Policy {
 	 * @return array
 	 */
 	public static function status() {
-		$allowlist = self::allowlist();
 		return array(
-			'kill_switch'       => self::enabled( self::KILL_SWITCH_OPTION, false ),
-			'mutations_enabled' => self::enabled( self::MUTATIONS_OPTION, true ),
-			'allowlisted'       => empty( $allowlist ) || in_array( '*', $allowlist, true ) || in_array( self::site_id(), $allowlist, true ) || in_array( self::host(), $allowlist, true ),
-			'allowlist_configured' => ! empty( $allowlist ),
+			'authority'         => 'central_server',
+			'kill_switch'       => false,
+			'mutations_enabled' => true,
+			'allowlisted'       => true,
+			'allowlist_configured' => false,
 		);
 	}
 

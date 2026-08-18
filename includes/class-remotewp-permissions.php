@@ -53,8 +53,12 @@ class RemoteWP_Permissions {
 	 * @return true|WP_Error True if allowed, WP_Error if denied.
 	 */
 	public function can( $operation ) {
-		$level   = get_option( 'remotewp_permission_level', 'full' );
-		$allowed = $this->profiles[ $level ] ?? $this->profiles['read-only'];
+		// Capability entitlement is resolved by the RemoteWP central server and
+		// represented locally only by the presence of the validated module. A
+		// WordPress option must not be able to downgrade or unlock the bridge.
+		$is_pro = class_exists( 'RemoteWP_FS_API_Pro' ) || ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL );
+		$level  = $is_pro ? 'full' : 'read-only';
+		$allowed = $is_pro ? $this->profiles['full'] : $this->profiles['read-only'];
 
 		if ( ! in_array( $operation, $allowed, true ) ) {
 			return new WP_Error(
@@ -121,42 +125,16 @@ class RemoteWP_Permissions {
 	}
 
 	/**
-	 * Check if a path satisfies configured path restrictions.
+	 * Legacy compatibility hook. Path access is centrally managed; local
+	 * editable allowlists are intentionally ignored. Built-in protected-path
+	 * and WordPress safety checks remain enforced by RemoteWP_Path_Policy.
 	 *
 	 * @param string $real_path The absolute path to check.
 	 * @param string $real_base The ABSPATH.
 	 * @return true|WP_Error True if allowed, WP_Error if restricted.
 	 */
 	private function check_path_restrictions( $real_path, $real_base ) {
-		$restrictions = get_option( 'remotewp_path_restrictions', '' );
-
-		if ( empty( $restrictions ) ) {
-			return true; // No restrictions, allow all
-		}
-
-		$allowed_paths = array_filter( array_map( 'trim', explode( "\n", $restrictions ) ) );
-
-		if ( empty( $allowed_paths ) ) {
-			return true;
-		}
-
-		foreach ( $allowed_paths as $allowed ) {
-			$allowed_real = realpath( $real_base . '/' . ltrim( $allowed, '/' ) );
-			if ( false === $allowed_real ) {
-				continue;
-			}
-			// Exact match (file or dir itself) OR path is inside the allowed directory
-			// Append DIRECTORY_SEPARATOR to prevent 'uploads' matching 'uploads2'
-			if ( $real_path === $allowed_real || 0 === strpos( $real_path, $allowed_real . DIRECTORY_SEPARATOR ) ) {
-				return true;
-			}
-		}
-
-		return new WP_Error(
-			'path_restricted',
-			__( 'Access denied. This path is not in the allowed directories list.', 'remotewp' ),
-			array( 'status' => 403 )
-		);
+		return true;
 	}
 
 	/**

@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.7.4
+Stable tag: 3.7.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -178,9 +178,40 @@ Backups are stored in a randomized directory inside wp-content/uploads/. The dir
 
 1. Dashboard - Token management and connection info
 2. Activity Log - Filterable audit log viewer
-3. Settings - Permissions, rate limiting and IP whitelist
+3. Settings - Connection diagnostics, rate limiting and IP whitelist; license and capability policy are managed centrally by RemoteWP
 
 == Changelog ==
+
+= 3.7.10 =
+
+* Central server is the authority for license, trial, Pro/Lifetime entitlement and capabilities.
+* Connected sites can receive the encrypted Pro module through the site token without manual keys or WordPress settings.
+* Removed editable local permission/path/mutation controls from the plugin workflow.
+* Sensitive mutations continue through automatic backup and operator approval.
+
+= 3.7.9 =
+
+* Pro/Lifetime/trial entitlements automatically recover the encrypted Pro module when it is missing or invalid.
+* Pro module payloads are removed automatically on deactivation, downgrade to Free, or expiry.
+* Added bounded module refresh and preserved the backup/approval workflow for sensitive mutations.
+
+= 3.7.8 =
+
+* Removed the legacy External Handoff Consent gate. Authenticated Pro/trial sites now submit redacted handoff logs automatically through the central service.
+
+= 3.7.7 =
+
+* Agent skill instructions are now resolved exclusively from the RemoteWP central server; the plugin package no longer ships a local SKILL.md or skill reference files.
+
+= 3.7.6 =
+
+* Added authenticated V2 handoff relay. Agents submit handoff logs with the site token; the plugin forwards them through the encrypted license connection without requesting a Master/Agency key.
+
+= 3.7.5 =
+* Improvement: Added an embedded Quick Start tutorial video directly below the connection status.
+* Improvement: Moved capability details out of the first page into Docs & Support for a clearer onboarding flow.
+* Fix: Handoff delivery now waits for and verifies the central HTTP response instead of reporting success after dispatch.
+* Security: Removed embedded internal license and shared encryption material from the public package.
 
 = 3.7.4 =
 * Fix: Clarified central handoff authentication. `Authorization: Bearer` must use the RemoteWP Master/Agency license key from the RemoteWP account/dashboard, not the WordPress site token.
