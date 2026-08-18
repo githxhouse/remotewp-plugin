@@ -147,7 +147,7 @@ class RemoteWP_Pro_Loader {
 
 	/**
 	 * Fetch and store the Pro module from the license server.
-	 * Called after successful license activation.
+	 * Called after successful license activation or during admin sync.
 	 *
 	 * @return bool|WP_Error True on success, WP_Error on failure.
 	 */
@@ -179,11 +179,11 @@ class RemoteWP_Pro_Loader {
 		}
 
 		$response = false;
-		$body    = array();
+		$body     = array();
 		$key_mode = 'license_key';
 		foreach ( $requests as $request ) {
 			$response = wp_remote_post( $request['url'], array(
-				'timeout' => 30,
+				'timeout' => 8,
 				'body'    => wp_json_encode( $request['body'] ),
 				'headers' => $request['headers'],
 			) );
@@ -242,8 +242,9 @@ class RemoteWP_Pro_Loader {
 			update_option( 'remotewp_license_trial_expires', sanitize_text_field( $body['trial_expires'] ) );
 		}
 
-		// Reset failure counter
+		// Reset failure counter and cooldown
 		update_option( self::OPT_FAIL_COUNT, 0 );
+		delete_transient( 'remotewp_pro_fetch_cooldown' );
 
 		return true;
 	}
@@ -296,32 +297,35 @@ class RemoteWP_Pro_Loader {
 	}
 
 	/**
-	 * Load the cached module, or refresh it once when the cache is missing or
-	 * cannot produce the Pro filesystem class. This is intentionally bounded to
-	 * one refresh attempt per request so a broken license server cannot create a
-	 * request loop. Active Pro/Lifetime/trial sites must recover automatically;
-	 * users must not be asked for WooCommerce credentials or hidden settings.
+	 * Load the cached module, or safely refresh it without blocking frontend traffic.
+	 * Protected by a transient cooldown and restricted to administrative/REST contexts.
 	 *
 	 * @return bool True when the Pro module and its filesystem class are loaded.
 	 */
 	public function load_or_refresh_module() {
-		$plugin_version = defined( 'REMOTEWP_VERSION' ) ? REMOTEWP_VERSION : 'unknown';
-		$refresh_marker = (string) get_option( 'remotewp_pro_module_refresh_version', '' );
-		if ( $plugin_version !== $refresh_marker ) {
-			$version_refresh = $this->fetch_module();
-			if ( ! is_wp_error( $version_refresh ) ) {
-				update_option( 'remotewp_pro_module_refresh_version', $plugin_version );
+		// 1. Decrypt cached module if present locally
+		if ( $this->has_module() ) {
+			$loaded = $this->load_module();
+			if ( $loaded && class_exists( 'RemoteWP_FS_API_Pro' ) ) {
+				return true;
 			}
 		}
 
-		$loaded = $this->load_module();
-		if ( $loaded && class_exists( 'RemoteWP_FS_API_Pro' ) ) {
-			return true;
+		// 2. Guard against hammering: check transient cooldown
+		if ( get_transient( 'remotewp_pro_fetch_cooldown' ) ) {
+			return false;
 		}
 
-		$refresh = $this->fetch_module();
-		if ( is_wp_error( $refresh ) ) {
-			error_log( '[RemoteWP] Pro module refresh failed: ' . $refresh->get_error_code() );
+		// 3. Do not block public frontend page views with synchronous network fetches
+		if ( ! is_admin() && ! defined( 'REST_REQUEST' ) && ! ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) {
+			return false;
+		}
+
+		// Set cooldown immediately to avoid concurrent worker stamps
+		set_transient( 'remotewp_pro_fetch_cooldown', 1, 12 * HOUR_IN_SECONDS );
+
+		$fetch = $this->fetch_module();
+		if ( is_wp_error( $fetch ) ) {
 			return false;
 		}
 
