@@ -89,12 +89,26 @@ class RemoteWP_License {
 	}
 
 	/**
+	 * Check if trial mode is active.
+	 *
+	 * @return bool
+	 */
+	public function is_trial_active() {
+		$key           = $this->get_license_key();
+		$is_pro        = defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO;
+		$trial_expires = get_option( self::OPT_TRIAL_EXPIRES, '' );
+		$is_trial      = ! empty( $trial_expires ) && strtotime( $trial_expires ) > time();
+
+		return ( $is_pro && ( strpos( $key, 'RWFREE' ) === 0 || $is_trial ) );
+	}
+
+	/**
 	 * Check if the current installation is a Pro build with active license.
 	 *
 	 * @return bool
 	 */
 	public function is_pro() {
-		return defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO && 'free' !== $this->get_tier();
+		return defined( 'REMOTEWP_IS_PRO' ) && REMOTEWP_IS_PRO && ( 'free' !== $this->get_tier() || $this->is_trial_active() );
 	}
 
 	/**
@@ -448,12 +462,14 @@ class RemoteWP_License {
 		$tier = $this->get_tier();
 
 		return array(
-			'key'        => $this->get_masked_key(),
-			'status'     => get_option( self::OPT_STATUS, 'inactive' ),
-			'tier'       => $tier,
-			'tier_label' => $this->get_tier_label( $tier ),
-			'expires'    => get_option( self::OPT_EXPIRES, '' ),
-			'is_pro'     => $this->is_pro(),
+			'key'           => $this->get_masked_key(),
+			'status'        => get_option( self::OPT_STATUS, 'inactive' ),
+			'tier'          => $tier,
+			'tier_label'    => $this->get_tier_label( $tier ),
+			'expires'       => get_option( self::OPT_EXPIRES, '' ),
+			'trial_expires' => get_option( self::OPT_TRIAL_EXPIRES, '' ),
+			'is_trial'      => $this->is_trial_active(),
+			'is_pro'        => $this->is_pro(),
 		);
 	}
 
