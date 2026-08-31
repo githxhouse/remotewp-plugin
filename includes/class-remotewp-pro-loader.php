@@ -260,6 +260,22 @@ class RemoteWP_Pro_Loader {
 			return false;
 		}
 
+		// Guard: If license is free and trial is expired, purge module and refuse to load
+		$trial_expires = get_option( 'remotewp_license_trial_expires', '' );
+		if ( ! empty( $trial_expires ) && strtotime( $trial_expires ) <= time() ) {
+			$this->delete_module();
+			update_option( 'remotewp_license_tier', 'free' );
+			delete_option( 'remotewp_license_trial_expires' );
+			return false;
+		}
+
+		$tier = get_option( 'remotewp_license_tier', 'free' );
+		$is_trial = ! empty( $trial_expires ) && strtotime( $trial_expires ) > time();
+		if ( 'free' === $tier && ! $is_trial && ! ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) ) {
+			$this->delete_module();
+			return false;
+		}
+
 		$key = $this->derive_key();
 		if ( false === $key ) {
 			return false;
@@ -309,6 +325,14 @@ class RemoteWP_Pro_Loader {
 			if ( $loaded && class_exists( 'RemoteWP_FS_API_Pro' ) ) {
 				return true;
 			}
+		}
+
+		// Do not fetch Pro module if site is on free tier with no active trial
+		$tier = get_option( 'remotewp_license_tier', 'free' );
+		$trial_expires = get_option( 'remotewp_license_trial_expires', '' );
+		$is_trial = ! empty( $trial_expires ) && strtotime( $trial_expires ) > time();
+		if ( 'free' === $tier && ! $is_trial && ! ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) ) {
+			return false;
 		}
 
 		// 2. Guard against hammering: check transient cooldown
