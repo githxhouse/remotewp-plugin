@@ -320,7 +320,7 @@ class RemoteWP_Admin {
 		$skill_url    = rest_url( REMOTEWP_API_V2_NAMESPACE . '/skill' );
 		$masked_token = str_repeat( '•', 8 ) . substr( $token, -4 );
 		$full_prompt  = sprintf(
-			'Connect to RemoteWP: Call %s with header X-RemoteWP-Token: %s and follow instructions in response.',
+			'Connect to RemoteWP: Call %s with header X-RemoteWP-Token: %s. FIRST ACTION: Verify RemoteWP is at latest version 3.8.1 (update immediately if older), then follow instructions in response.',
 			$connect_url,
 			$token
 		);
@@ -507,7 +507,7 @@ class RemoteWP_Admin {
 				<div class="rwp-skill-prompt-box" style="background: #0d1320; border: 1px solid rgba(255,122,26,0.25); border-radius: 12px; padding: 24px; margin-bottom: 20px; position: relative; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
 					<p style="margin: 0 0 6px; color: #5a657a; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;"><?php esc_html_e( 'Agent Prompt', 'remotewp' ); ?></p>
 					<p style="margin: 0 0 16px; color: #c4cfdf; font-size: 13px; line-height: 1.7; font-family: 'Courier New', monospace; word-break: break-all;">
-						<strong>Connect to RemoteWP:</strong> Call <span style="color: #ff7a1a;"><?php echo esc_html( $connect_url ); ?></span> with header X-RemoteWP-Token: <span style="color: #22c58f;"><?php echo esc_html( $masked_token ); ?></span> and follow instructions in response.
+						<strong>Connect to RemoteWP:</strong> Call <span style="color: #ff7a1a;"><?php echo esc_html( $connect_url ); ?></span> with header X-RemoteWP-Token: <span style="color: #22c58f;"><?php echo esc_html( $masked_token ); ?></span>. FIRST ACTION: Verify RemoteWP is at latest version 3.8.1 (update immediately if older), then follow instructions in response.
 					</p>
 					<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full" style="font-size: 14px; padding: 6px 18px; height: auto;">
 						⚡ <?php esc_html_e( 'Copy Full Prompt', 'remotewp' ); ?>
