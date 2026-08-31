@@ -80,47 +80,66 @@ add_action( 'init', 'remotewp_load_textdomain' );
 function remotewp_load_classes() {
 	$includes = REMOTEWP_PLUGIN_DIR . 'includes/';
 
-	// Core classes (always loaded)
-	require_once $includes . 'class-remotewp-logger.php';
-	require_once $includes . 'class-remotewp-rate-limiter.php';
-	require_once $includes . 'class-remotewp-permissions.php';
-	require_once $includes . 'class-remotewp-license.php';
-	require_once $includes . 'class-remotewp-operation-safety.php';
-	require_once $includes . 'class-remotewp-operation-coordinator.php';
-	require_once $includes . 'class-remotewp-data-redactor.php';
-	require_once $includes . 'class-remotewp-content-handles.php';
-	require_once $includes . 'class-remotewp-patch-engine.php';
-	require_once $includes . 'class-remotewp-v2-response.php';
-	require_once $includes . 'class-remotewp-v2-contract.php';
-	require_once $includes . 'class-remotewp-connection-context.php';
-	require_once $includes . 'class-remotewp-v2-token-store.php';
-	require_once $includes . 'class-remotewp-rollout-policy.php';
-	require_once $includes . 'class-remotewp-verification-manifest.php';
-	require_once $includes . 'class-remotewp-path-policy.php';
-	require_once $includes . 'class-remotewp-auth.php';
-	require_once $includes . 'class-remotewp-fs-api.php';
-	require_once $includes . 'class-remotewp-handoff-api.php';
-	require_once $includes . 'class-remotewp-admin.php';
-	require_once $includes . 'class-remotewp-updater.php';
+	$core_files = array(
+		'class-remotewp-logger.php',
+		'class-remotewp-rate-limiter.php',
+		'class-remotewp-permissions.php',
+		'class-remotewp-license.php',
+		'class-remotewp-operation-safety.php',
+		'class-remotewp-operation-coordinator.php',
+		'class-remotewp-data-redactor.php',
+		'class-remotewp-content-handles.php',
+		'class-remotewp-patch-engine.php',
+		'class-remotewp-v2-response.php',
+		'class-remotewp-v2-contract.php',
+		'class-remotewp-connection-context.php',
+		'class-remotewp-v2-token-store.php',
+		'class-remotewp-rollout-policy.php',
+		'class-remotewp-verification-manifest.php',
+		'class-remotewp-path-policy.php',
+		'class-remotewp-auth.php',
+		'class-remotewp-fs-api.php',
+		'class-remotewp-handoff-api.php',
+		'class-remotewp-admin.php',
+		'class-remotewp-updater.php',
+		'class-remotewp-pro-loader.php',
+	);
 
-	// Pro loader (always loaded — handles module lifecycle)
-	require_once $includes . 'class-remotewp-pro-loader.php';
+	foreach ( $core_files as $file ) {
+		$path = $includes . $file;
+		if ( file_exists( $path ) ) {
+			require_once $path;
+		} else {
+			return false;
+		}
+	}
 
 	// Pro classes loading
 	if ( REMOTEWP_HAS_LOCAL_PRO ) {
-		// Full/internal build: load directly from pro/ folder
 		$pro = REMOTEWP_PLUGIN_DIR . 'pro/';
-		require_once $pro . 'class-remotewp-fs-api-pro.php';
-		require_once $pro . 'class-remotewp-wp-api.php';
-		require_once $pro . 'class-remotewp-admin-pro.php';
+		$pro_files = array(
+			'class-remotewp-fs-api-pro.php',
+			'class-remotewp-wp-api.php',
+			'class-remotewp-admin-pro.php',
+		);
+		foreach ( $pro_files as $file ) {
+			$path = $pro . $file;
+			if ( file_exists( $path ) ) {
+				require_once $path;
+			}
+		}
 	}
+
+	return true;
 }
 
 /**
  * Initialize the plugin after all classes are loaded.
  */
 function remotewp_init() {
-	remotewp_load_classes();
+	if ( ! remotewp_load_classes() ) {
+		return;
+	}
 
 	// Correlate every RemoteWP REST response with the caller's request. This
 	// also covers authentication/permission failures that happen before a
