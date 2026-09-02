@@ -3,16 +3,14 @@
  * RemoteWP Auto-Updater
  *
  * Integrates with WordPress's native update system to provide
- * 1-click updates for Pro users directly from the WP dashboard.
+ * 1-click updates for Pro and Free users directly from the WP dashboard.
  *
  * Hooks:
- *   - pre_set_site_transient_update_plugins → inject update info
+ *   - pre_set_site_transient_update_plugins → inject update info on transient save
+ *   - site_transient_update_plugins → sanitize and provide update info on transient read
  *   - plugins_api → provide plugin details for the "View Details" modal
  *   - upgrader_process_complete → clear cache after update
- *
- * The updater only contacts the license server if:
- *   1. Pro files are present (REMOTEWP_IS_PRO)
- *   2. A license key is saved and active
+ *   - upgrader_package_options → overwrite remote package on update
  *
  * @package RemoteWP
  * @since   3.3.0
@@ -50,31 +48,28 @@ class RemoteWP_Updater {
 	 *
 	 * @var string
 	 */
-	private $cache_key = 'remotewp_update_check';
+	private $cache_key;
 
 	/**
 	 * How long to cache update checks (in seconds).
-	 * Default: 12 hours.
+	 * Default: 6 hours (21600 seconds).
 	 *
 	 * @var int
 	 */
-	private $cache_ttl = 43200;
+	private $cache_ttl = 21600;
 
 	/**
 	 * Constructor — register WordPress hooks.
 	 */
 	public function __construct() {
-		// Version-scoped cache prevents an old negative result from hiding a new
-		// package for up to the previous cache TTL after a release.
 		$this->cache_key = 'remotewp_update_check_' . str_replace( '.', '_', REMOTEWP_VERSION );
 		$this->plugin_basename = defined( 'REMOTEWP_PLUGIN_BASENAME' )
 			? REMOTEWP_PLUGIN_BASENAME
 			: 'remotewp/remotewp.php';
 
-		// Check for updates (always registered for both Free and Pro)
-
-		// Check for updates
+		// Check for updates on write and on read
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
+		add_filter( 'site_transient_update_plugins', array( $this, 'filter_update_plugins_transient' ) );
 
 		// Plugin details popup (View Details link)
 		add_filter( 'plugins_api', array( $this, 'plugin_info' ), 20, 3 );
@@ -92,9 +87,45 @@ class RemoteWP_Updater {
 	}
 
 	/**
+	 * Filter the update_plugins site transient whenever WordPress reads it.
+	 *
+	 * Guarantees that if the transient contains a stale update notice for RemoteWP
+	 * where the new_version <= installed version, it is immediately stripped out
+	 * from the response array so WordPress never displays "Update available" for the same version.
+	 *
+	 * @param object|false $transient
+	 * @return object|false
+	 */
+	public function filter_update_plugins_transient( $transient ) {
+		if ( empty( $transient ) || ! is_object( $transient ) ) {
+			return $transient;
+		}
+
+		if ( isset( $transient->response[ $this->plugin_basename ] ) ) {
+			$item = $transient->response[ $this->plugin_basename ];
+			$new_version = is_object( $item ) ? ( $item->new_version ?? '' ) : ( $item['new_version'] ?? '' );
+
+			if ( empty( $new_version ) || version_compare( $new_version, REMOTEWP_VERSION, '<=' ) ) {
+				unset( $transient->response[ $this->plugin_basename ] );
+				if ( ! isset( $transient->no_update[ $this->plugin_basename ] ) ) {
+					$transient->no_update[ $this->plugin_basename ] = (object) array(
+						'slug'        => $this->slug,
+						'plugin'      => $this->plugin_basename,
+						'new_version' => REMOTEWP_VERSION,
+						'url'         => 'https://remotewp.dev',
+						'package'     => '',
+					);
+				}
+			}
+		}
+
+		return $transient;
+	}
+
+	/**
 	 * Check the license server for available updates.
 	 *
-	 * Hooks into WordPress's update check transient. If a newer
+	 * Hooks into WordPress's update check transient on write. If a newer
 	 * version exists, injects update info so WP shows the native
 	 * "Update Available" notice.
 	 *
@@ -102,8 +133,21 @@ class RemoteWP_Updater {
 	 * @return object Modified transient.
 	 */
 	public function check_for_update( $transient ) {
+		if ( empty( $transient ) || ! is_object( $transient ) ) {
+			return $transient;
+		}
+
 		if ( empty( $transient->checked ) ) {
 			return $transient;
+		}
+
+		// Ensure any stale entry matching or lower than current version is purged
+		if ( isset( $transient->response[ $this->plugin_basename ] ) ) {
+			$item = $transient->response[ $this->plugin_basename ];
+			$ver  = is_object( $item ) ? ( $item->new_version ?? '' ) : ( $item['new_version'] ?? '' );
+			if ( empty( $ver ) || version_compare( $ver, REMOTEWP_VERSION, '<=' ) ) {
+				unset( $transient->response[ $this->plugin_basename ] );
+			}
 		}
 
 		// Get license info (fallback to internal key for FULL builds)
@@ -119,12 +163,25 @@ class RemoteWP_Updater {
 		if ( is_admin() && ( isset( $_GET['force-check'] ) || ( isset( $GLOBALS['pagenow'] ) && 'update-core.php' === $GLOBALS['pagenow'] ) ) ) {
 			$force = true;
 			delete_transient( $this->cache_key );
+			delete_transient( 'remotewp_update_check' );
 		}
 
 		$cached = $force ? false : get_transient( $this->cache_key );
 		if ( false !== $cached ) {
-			if ( ! empty( $cached['update_available'] ) && ! empty( $cached['response'] ) ) {
+			if ( ! empty( $cached['update_available'] ) && ! empty( $cached['response'] ) && ! empty( $cached['response']->new_version ) && version_compare( $cached['response']->new_version, REMOTEWP_VERSION, '>' ) ) {
 				$transient->response[ $this->plugin_basename ] = $cached['response'];
+				unset( $transient->no_update[ $this->plugin_basename ] );
+			} else {
+				unset( $transient->response[ $this->plugin_basename ] );
+				if ( ! isset( $transient->no_update[ $this->plugin_basename ] ) ) {
+					$transient->no_update[ $this->plugin_basename ] = (object) array(
+						'slug'        => $this->slug,
+						'plugin'      => $this->plugin_basename,
+						'new_version' => REMOTEWP_VERSION,
+						'url'         => 'https://remotewp.dev',
+						'package'     => '',
+					);
+				}
 			}
 			return $transient;
 		}
@@ -135,10 +192,13 @@ class RemoteWP_Updater {
 		if ( is_wp_error( $remote ) || empty( $remote['success'] ) ) {
 			// Cache the negative result to avoid hammering the server
 			set_transient( $this->cache_key, array( 'update_available' => false ), $this->cache_ttl );
+			unset( $transient->response[ $this->plugin_basename ] );
 			return $transient;
 		}
 
-		if ( ! empty( $remote['update_available'] ) && ! empty( $remote['version'] ) ) {
+		$has_update = ! empty( $remote['update_available'] ) && ! empty( $remote['version'] ) && version_compare( $remote['version'], REMOTEWP_VERSION, '>' );
+
+		if ( $has_update ) {
 			$response = (object) array(
 				'slug'         => $this->slug,
 				'plugin'       => $this->plugin_basename,
@@ -156,6 +216,7 @@ class RemoteWP_Updater {
 			);
 
 			$transient->response[ $this->plugin_basename ] = $response;
+			unset( $transient->no_update[ $this->plugin_basename ] );
 
 			// Cache the positive result
 			set_transient( $this->cache_key, array(
@@ -163,7 +224,18 @@ class RemoteWP_Updater {
 				'response'         => $response,
 			), $this->cache_ttl );
 		} else {
-			// No update available — cache it
+			// No update available — clean response and cache negative result
+			unset( $transient->response[ $this->plugin_basename ] );
+			$transient->no_update[ $this->plugin_basename ] = (object) array(
+				'slug'         => $this->slug,
+				'plugin'       => $this->plugin_basename,
+				'new_version'  => REMOTEWP_VERSION,
+				'url'          => 'https://remotewp.dev',
+				'package'      => '',
+				'tested'       => $remote['tested'] ?? '',
+				'requires'     => $remote['requires'] ?? '',
+				'requires_php' => $remote['requires_php'] ?? '',
+			);
 			set_transient( $this->cache_key, array( 'update_available' => false ), $this->cache_ttl );
 		}
 
@@ -194,8 +266,8 @@ class RemoteWP_Updater {
 			? ( new RemoteWP_License() )->get_license_key()
 			: get_option( 'remotewp_license_key', '' );
 
-		if ( empty( $license_key ) ) {
-			return $result;
+		if ( empty( $license_key ) && function_exists( 'remotewp_decode_internal_key' ) ) {
+			$license_key = remotewp_decode_internal_key();
 		}
 
 		$remote = $this->fetch_update_info( $license_key );
@@ -231,17 +303,42 @@ class RemoteWP_Updater {
 	}
 
 	/**
-	 * Clear the update check cache.
+	 * Clear the update check cache and reset update_plugins site transient.
 	 *
 	 * Called after plugin updates complete.
 	 *
-	 * @param object $upgrader
-	 * @param array  $options
+	 * @param object|null $upgrader
+	 * @param array       $options
 	 */
 	public function clear_update_cache( $upgrader = null, $options = array() ) {
+		$should_clear = false;
+
 		if ( ! empty( $options['plugins'] ) && is_array( $options['plugins'] ) ) {
 			if ( in_array( $this->plugin_basename, $options['plugins'], true ) ) {
-				delete_transient( $this->cache_key );
+				$should_clear = true;
+			}
+		} elseif ( empty( $options ) ) {
+			$should_clear = true;
+		}
+
+		if ( $should_clear ) {
+			delete_transient( $this->cache_key );
+			delete_transient( 'remotewp_update_check' );
+
+			// Clean WordPress update_plugins transient so it doesn't hold stale update notice
+			$update_plugins = get_site_transient( 'update_plugins' );
+			if ( is_object( $update_plugins ) ) {
+				if ( isset( $update_plugins->response[ $this->plugin_basename ] ) ) {
+					unset( $update_plugins->response[ $this->plugin_basename ] );
+				}
+				$update_plugins->no_update[ $this->plugin_basename ] = (object) array(
+					'slug'        => $this->slug,
+					'plugin'      => $this->plugin_basename,
+					'new_version' => REMOTEWP_VERSION,
+					'url'         => 'https://remotewp.dev',
+					'package'     => '',
+				);
+				set_site_transient( 'update_plugins', $update_plugins );
 			}
 		}
 	}
@@ -251,6 +348,13 @@ class RemoteWP_Updater {
 	 */
 	public function clear_update_cache_simple() {
 		delete_transient( $this->cache_key );
+		delete_transient( 'remotewp_update_check' );
+
+		$update_plugins = get_site_transient( 'update_plugins' );
+		if ( is_object( $update_plugins ) && isset( $update_plugins->response[ $this->plugin_basename ] ) ) {
+			unset( $update_plugins->response[ $this->plugin_basename ] );
+			set_site_transient( 'update_plugins', $update_plugins );
+		}
 	}
 
 	/**

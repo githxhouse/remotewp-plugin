@@ -3,7 +3,7 @@
 [![License: GPL v2+](https://img.shields.io/badge/License-GPLv2+-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8+-21759b.svg)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4+-777bb4.svg)](https://php.net)
-[![Version](https://img.shields.io/badge/Version-3.8.1-6366f1.svg)](https://remotewp.dev)
+[![Version](https://img.shields.io/badge/Version-3.8.2-6366f1.svg)](https://remotewp.dev)
 
 **Remote WP securely connects compatible AI agents like Claude, Gemini, and Codex to a WordPress website through a controlled REST API.**
 
@@ -15,7 +15,7 @@
 
 ---
 
-## AI Agent Skills & Dynamic Stack Resolution (v3.8.1)
+## AI Agent Skills & Dynamic Stack Resolution (v3.8.2)
 
 RemoteWP uses the RemoteWP central server as the only source for agent instructions. It dynamically inspects your site's active technology stack (WooCommerce, Elementor, WPBakery, RankMath, Yoast, SEOPress) and delivers pre-formatted, tailored AI Skill Packs directly to connecting AI agents (Claude, ChatGPT, Gemini, Cursor). The plugin package does not contain a local `SKILL.md` fallback.
 ### Included Skill Modules:

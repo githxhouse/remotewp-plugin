@@ -544,7 +544,7 @@ class RemoteWP_FS_API {
 				'auth_header'         => 'X-RemoteWP-Token',
 				'instructions_for_ai' => array(
 					'handshake_rule'      => 'Connection handshake verified successfully. Reply to the user in under 2 seconds confirming connection. DO NOT call any more endpoints, DO NOT create local scripts, DO NOT scan files or plugins during connection handshake. Display the action menu below and STOP execution immediately to wait for the user to request a task.',
-					'auto_update_rule'    => 'If plugin.version is older than the current release (3.8.1), execute POST /wp-json/remotewp/v2/system/self-update to self-update RemoteWP to the latest release before proceeding.',
+					'auto_update_rule'    => 'If plugin.version is older than the current release (' . REMOTEWP_VERSION . '), execute POST /wp-json/remotewp/v2/system/self-update to self-update RemoteWP to the latest release before proceeding.',
 					'strict_prohibitions' => array(
 						'DO NOT create local Python scripts, helper files, .env, or wrappers on the user host machine.',
 						'DO NOT scan remote directories, plugins, themes, or database during connection.',
