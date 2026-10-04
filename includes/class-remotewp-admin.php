@@ -342,25 +342,24 @@ class RemoteWP_Admin {
 			$token
 		) : '';
 		?>
+		<input type="hidden" id="remotewp-token" value="<?php echo esc_attr( $token ); ?>">
+		<input type="hidden" id="rwp-skill-prompt-full" value="<?php echo esc_attr( $full_prompt ); ?>">
+
 		<?php if ( $is_activated ) : ?>
 		<div class="rwp-activated-banner" style="background: linear-gradient(135deg, #0b1528, #111d35); border: 2px solid #2563eb; border-radius: 14px; padding: 22px 26px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(37,99,235,0.25);">
 			<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
 				<span class="dashicons dashicons-yes-alt" style="font-size: 24px; width: 24px; height: 24px; color: #10b981;"></span>
 				<h3 style="margin: 0; color: #f8fafc; font-size: 18px; font-weight: 700;">
-					<?php esc_html_e( 'License activated successfully! Two steps to start:', 'remotewp' ); ?>
+					<?php esc_html_e( 'License activated. One step left:', 'remotewp' ); ?>
 				</h3>
 			</div>
-			<p style="margin: 0 0 14px; color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-				<?php esc_html_e( '1. Click the highlighted "Copy Agent Prompt" button below and paste it into Claude, ChatGPT, Cursor, or Codex.', 'remotewp' ); ?><br>
-				<?php esc_html_e( '2. After the agent connects, paste this safe first command to inspect your site:', 'remotewp' ); ?>
+			<p style="margin: 0 0 16px; color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+				<?php esc_html_e( 'Click Copy Agent Prompt and paste it into Claude, ChatGPT or Gemini.', 'remotewp' ); ?>
 			</p>
-			<div style="display: flex; align-items: center; gap: 12px; background: #060c18; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; max-width: 760px;">
-				<code id="rwp-first-cmd-box" style="color: #38bdf8; font-size: 13px; font-family: monospace; flex: 1; word-break: break-word;">
-					<?php echo esc_html( $first_command ); ?>
-				</code>
-				<button type="button" class="button button-secondary remotewp-btn-copy" data-target="rwp-first-cmd-box" style="font-size: 12px; height: auto; padding: 6px 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;">
-					<span class="dashicons dashicons-clipboard" style="margin-top: 1px;"></span>
-					<?php esc_html_e( 'Copy Command', 'remotewp' ); ?>
+			<div>
+				<button type="button" class="button button-primary remotewp-btn-copy rwp-btn-highlighted" data-target="rwp-skill-prompt-full" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
+					<span class="dashicons dashicons-admin-links" style="margin-top: 2px; font-size: 18px;"></span>
+					<?php esc_html_e( 'Copy Agent Prompt', 'remotewp' ); ?>
 				</button>
 			</div>
 		</div>
@@ -392,15 +391,13 @@ class RemoteWP_Admin {
 							<?php esc_html_e( 'Generate API Token', 'remotewp' ); ?>
 						</a>
 					<?php else : ?>
-						<button type="button" class="button button-primary remotewp-btn-copy<?php echo $is_activated ? ' rwp-btn-highlighted' : ''; ?>" data-target="rwp-skill-prompt-full" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
+						<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
 							<span class="dashicons dashicons-admin-links" style="margin-top: 2px; font-size: 18px;"></span>
 							<?php esc_html_e( 'Copy Agent Prompt', 'remotewp' ); ?>
 						</button>
 						<button type="button" class="button button-secondary" id="rwp-btn-test-connection" style="font-size: 12px; padding: 6px 14px; height: auto; border-radius: 8px;">
 							<?php esc_html_e( 'Test Connection', 'remotewp' ); ?>
 						</button>
-						<input type="hidden" id="remotewp-token" value="<?php echo esc_attr( $token ); ?>">
-						<input type="hidden" id="rwp-skill-prompt-full" value="<?php echo esc_attr( $full_prompt ); ?>">
 					<?php endif; ?>
 				</div>
 				<p style="margin: 12px 0 0; color: #9ca9be; font-size: 12px; display: flex; align-items: center; gap: 6px;">
