@@ -3,7 +3,7 @@
  * Plugin Name: RemoteWP
  * Plugin URI:  https://remotewp.dev
  * Description: The AI-Ready WordPress Bridge. Let AI agents manage your WordPress site remotely through a secure REST API — no SSH or FTP needed.
- * Version:     3.8.5
+ * Version:     3.9.0
  * Author:      X-HOUSE SRL
  * Author URI:  https://xhouse.ro
  * License:     GPL-2.0-or-later
@@ -39,7 +39,7 @@ if ( version_compare( get_bloginfo( 'version' ), REMOTEWP_MIN_WP_VERSION, '<' ) 
 }
 
 // Plugin constants
-define( 'REMOTEWP_VERSION', '3.8.5' );
+define( 'REMOTEWP_VERSION', '3.9.0' );
 define( 'REMOTEWP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'REMOTEWP_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -103,6 +103,13 @@ function remotewp_load_classes() {
 		'class-remotewp-admin.php',
 		'class-remotewp-updater.php',
 		'class-remotewp-pro-loader.php',
+		'class-remotewp-approval.php',
+		'class-remotewp-wpconfig-editor.php',
+		'class-remotewp-htaccess-editor.php',
+		'class-remotewp-guarded-file.php',
+		'class-remotewp-options-writer.php',
+		'class-remotewp-maintenance.php',
+		'class-remotewp-perf-api.php',
 	);
 
 	foreach ( $core_files as $file ) {
@@ -182,6 +189,7 @@ function remotewp_init() {
 	if ( $pro_loaded && class_exists( 'RemoteWP_FS_API_Pro' ) ) {
 		new RemoteWP_FS_API_Pro( $auth, $permissions, $logger, $license );
 		new RemoteWP_WP_API( $auth, $permissions, $logger, $license );
+		new RemoteWP_Perf_API( $auth, $permissions, $logger );
 		new RemoteWP_Admin_Pro( $auth, $permissions, $logger, $license );
 	}
 }

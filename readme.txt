@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.8.5
+Stable tag: 3.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -89,6 +89,14 @@ Yes. RemoteWP uses the standard WordPress REST API namespace (`/wp-json/helper/v
 3. Settings - Connection diagnostics, rate limiting and IP whitelist; license and capability policy are managed centrally by RemoteWP
 
 == Changelog ==
+
+= 3.9.0 =
+
+* New: GET/POST /wp/constants - read and set an allowlist of 13 wp-config.php constants (memory limits, revisions, debug flags, script compression). wp-config.php contents and database credentials/salts are never exposed.
+* New: GET/POST/DELETE /wp/htaccess-block - manage a RemoteWP-owned, allowlist-validated block in .htaccess (compression, expires, cache-control, Vary). The rest of the file is never read back or modified.
+* New: POST /wp/options - write allowlisted performance options (image sizes, LiteSpeed, WP Rocket, W3TC, Autoptimize, Perfmatters). Credential-like options and sub-keys are refused; the previous value is returned for rollback.
+* New: POST /wp/maintenance - named database maintenance with dry_run: delete_revisions, delete_expired_transients, delete_orphaned_postmeta, delete_spam_comments, optimize_tables. Irreversible; operator must hold a hosting-level database backup.
+* Safety: every new write requires explicit operator approval (HTTP 428), file writes are backed up (backup_id returned), verified after writing, and rolled back automatically on failure.
 
 = 3.8.5 =
 
