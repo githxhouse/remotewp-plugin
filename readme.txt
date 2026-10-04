@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.8.4
+Stable tag: 3.8.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -89,6 +89,11 @@ Yes. RemoteWP uses the standard WordPress REST API namespace (`/wp-json/helper/v
 3. Settings - Connection diagnostics, rate limiting and IP whitelist; license and capability policy are managed centrally by RemoteWP
 
 == Changelog ==
+
+= 3.8.5 =
+
+* Fix: Pro 48h trial begins upon initial domain activation, ensuring trial access when plugin is installed.
+* Optimization: Clean free license provisioning avoiding premature trial expiry.
 
 = 3.8.4 =
 
