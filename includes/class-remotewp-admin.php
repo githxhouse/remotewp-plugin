@@ -170,9 +170,17 @@ class RemoteWP_Admin {
 			return;
 		}
 
+		$license_info      = $this->license->get_info();
+		$is_license_active = ( defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL ) || ( 'active' === ( $license_info['status'] ?? '' ) && ! empty( $license_info['key'] ) );
+
 		$active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'dashboard';
-		$token      = $this->auth->get_token();
-		$settings   = $this->get_settings();
+		if ( ! $is_license_active && ! isset( $_GET['tab'] ) ) {
+			$active_tab = 'license';
+		}
+
+		$token        = $this->auth->get_token();
+		$settings     = $this->get_settings();
+		$is_connected = $is_license_active && ! empty( $token );
 
 		?>
 		<div class="wrap rwp-admin remotewp-wrap">
@@ -190,7 +198,11 @@ class RemoteWP_Admin {
 						<p class="rwp-header-subtitle"><?php esc_html_e( 'AI-Ready WordPress Bridge', 'remotewp' ); ?></p>
 					</div>
 					<div class="rwp-header-badges">
-						<span class="rwp-badge-status-dot connected"><?php esc_html_e( 'Connected', 'remotewp' ); ?></span>
+						<?php if ( $is_connected ) : ?>
+							<span class="rwp-badge-status-dot connected"><?php esc_html_e( 'Connected', 'remotewp' ); ?></span>
+						<?php else : ?>
+							<span class="rwp-badge-status-dot setup-required"><?php esc_html_e( 'Setup required', 'remotewp' ); ?></span>
+						<?php endif; ?>
 						<?php
 						$tier = $this->license->get_tier();
 						$tier_label = $this->license->get_tier_label( $tier );
@@ -277,7 +289,7 @@ class RemoteWP_Admin {
 						$this->render_docs_tab();
 						break;
 					default:
-						$this->render_dashboard_tab( $token );
+						$this->render_dashboard_tab( $token, $is_license_active );
 						break;
 				}
 				?>
@@ -303,9 +315,10 @@ class RemoteWP_Admin {
 	/**
 	 * Render the Dashboard tab (Overview).
 	 *
-	 * @param string $token Current API token.
+	 * @param string $token             Current API token.
+	 * @param bool   $is_license_active Whether the license is currently active.
 	 */
-	private function render_dashboard_tab( $token ) {
+	private function render_dashboard_tab( $token, $is_license_active = false ) {
 		$logs           = $this->logger->get_recent( 5 );
 		$all_logs       = $this->logger->get_recent( 500 );
 		$requests_today = 0;
@@ -315,38 +328,84 @@ class RemoteWP_Admin {
 				$requests_today++;
 			}
 		}
-		$is_pro = apply_filters( 'remotewp_is_pro_build', false );
+		$is_pro        = apply_filters( 'remotewp_is_pro_build', false );
+		$is_connected  = $is_license_active && ! empty( $token );
+		$is_activated  = isset( $_GET['activated'] ) && '1' === (string) $_GET['activated'];
+		$first_command = __( 'Inspect the site and tell me what WordPress version and plugins are installed, without making any changes.', 'remotewp' );
+
 		$connect_url  = rest_url( REMOTEWP_API_V2_NAMESPACE . '/connect' );
 		$skill_url    = rest_url( REMOTEWP_API_V2_NAMESPACE . '/skill' );
-		$masked_token = str_repeat( '•', 8 ) . substr( $token, -4 );
-		$full_prompt  = sprintf(
-			'Connect to RemoteWP: Call %s with header X-RemoteWP-Token: %s and follow instructions in response.',
+		$masked_token = ! empty( $token ) ? str_repeat( '•', 8 ) . substr( $token, -4 ) : '••••••••';
+		$full_prompt  = ! empty( $token ) ? sprintf(
+			'Connect to RemoteWP for WordPress management on this site. Run this command using your terminal / command tool to fetch the connection context: curl -s -X GET "%s" -H "X-RemoteWP-Token: %s" — parse the JSON response, verify connection status, and show the action menu.',
 			$connect_url,
 			$token
-		);
+		) : '';
 		?>
+		<?php if ( $is_activated ) : ?>
+		<div class="rwp-activated-banner" style="background: linear-gradient(135deg, #0b1528, #111d35); border: 2px solid #2563eb; border-radius: 14px; padding: 22px 26px; margin-bottom: 22px; box-shadow: 0 8px 24px rgba(37,99,235,0.25);">
+			<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+				<span class="dashicons dashicons-yes-alt" style="font-size: 24px; width: 24px; height: 24px; color: #10b981;"></span>
+				<h3 style="margin: 0; color: #f8fafc; font-size: 18px; font-weight: 700;">
+					<?php esc_html_e( 'License activated successfully! Two steps to start:', 'remotewp' ); ?>
+				</h3>
+			</div>
+			<p style="margin: 0 0 14px; color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+				<?php esc_html_e( '1. Click the highlighted "Copy Agent Prompt" button below and paste it into Claude, ChatGPT, Cursor, or Codex.', 'remotewp' ); ?><br>
+				<?php esc_html_e( '2. After the agent connects, paste this safe first command to inspect your site:', 'remotewp' ); ?>
+			</p>
+			<div style="display: flex; align-items: center; gap: 12px; background: #060c18; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; max-width: 760px;">
+				<code id="rwp-first-cmd-box" style="color: #38bdf8; font-size: 13px; font-family: monospace; flex: 1; word-break: break-word;">
+					<?php echo esc_html( $first_command ); ?>
+				</code>
+				<button type="button" class="button button-secondary remotewp-btn-copy" data-target="rwp-first-cmd-box" style="font-size: 12px; height: auto; padding: 6px 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;">
+					<span class="dashicons dashicons-clipboard" style="margin-top: 1px;"></span>
+					<?php esc_html_e( 'Copy Command', 'remotewp' ); ?>
+				</button>
+			</div>
+		</div>
+		<?php endif; ?>
+
 		<!-- Connection Hero / Summary Panel -->
 		<div class="rwp-hero-section">
 			<div class="rwp-hero-left">
-				<h2 class="rwp-hero-title"><?php esc_html_e( 'RemoteWP is connected and ready', 'remotewp' ); ?></h2>
-				<p class="rwp-hero-subtitle"><?php esc_html_e( 'Secure AI automation bridge for WordPress, WooCommerce, SEO, file operations and plugin management.', 'remotewp' ); ?></p>
+				<?php if ( $is_connected ) : ?>
+					<h2 class="rwp-hero-title"><?php esc_html_e( 'RemoteWP is connected and ready', 'remotewp' ); ?></h2>
+					<p class="rwp-hero-subtitle"><?php esc_html_e( 'Secure AI automation bridge for WordPress, WooCommerce, SEO, file operations and plugin management.', 'remotewp' ); ?></p>
+				<?php elseif ( ! $is_license_active ) : ?>
+					<h2 class="rwp-hero-title"><?php esc_html_e( 'Connect RemoteWP to start automating', 'remotewp' ); ?></h2>
+					<p class="rwp-hero-subtitle"><?php esc_html_e( 'Activate your license to connect your WordPress site and unlock AI automation.', 'remotewp' ); ?></p>
+				<?php else : ?>
+					<h2 class="rwp-hero-title"><?php esc_html_e( 'API Token required to connect', 'remotewp' ); ?></h2>
+					<p class="rwp-hero-subtitle"><?php esc_html_e( 'Generate an API token in the API Access tab to enable AI agent connection.', 'remotewp' ); ?></p>
+				<?php endif; ?>
 				
 				<div class="rwp-hero-actions" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px;">
-					<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
-						<span class="dashicons dashicons-admin-links" style="margin-top: 2px; font-size: 18px;"></span>
-						<?php esc_html_e( 'Copy Full Prompt', 'remotewp' ); ?>
-					</button>
-					<button type="button" class="button button-secondary remotewp-btn-copy" data-target="remotewp-token" style="font-size: 11px; padding: 4px 10px; height: auto; opacity: 0.75; border-radius: 6px;">
-						<?php esc_html_e( 'Copy Token Only', 'remotewp' ); ?>
-					</button>
-					<button type="button" class="button button-secondary" id="rwp-btn-test-connection" style="font-size: 12px; padding: 6px 14px; height: auto; border-radius: 8px;">
-						<?php esc_html_e( 'Test Connection', 'remotewp' ); ?>
-					</button>
-					<input type="hidden" id="remotewp-token" value="<?php echo esc_attr( $token ); ?>">
-					<input type="hidden" id="rwp-skill-prompt-full" value="<?php echo esc_attr( $full_prompt ); ?>">
+					<?php if ( ! $is_license_active ) : ?>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=license' ) ); ?>" class="button button-primary" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-admin-network" style="margin-top: 2px;"></span>
+							<?php esc_html_e( 'Activate License', 'remotewp' ); ?>
+						</a>
+					<?php elseif ( empty( $token ) ) : ?>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=access' ) ); ?>" class="button button-primary" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-rest-api" style="margin-top: 2px;"></span>
+							<?php esc_html_e( 'Generate API Token', 'remotewp' ); ?>
+						</a>
+					<?php else : ?>
+						<button type="button" class="button button-primary remotewp-btn-copy<?php echo $is_activated ? ' rwp-btn-highlighted' : ''; ?>" data-target="rwp-skill-prompt-full" style="font-size: 15px; font-weight: 700; padding: 10px 24px; height: auto; background: #2563eb; border-color: #1d4ed8; border-radius: 10px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); text-transform: none; display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-admin-links" style="margin-top: 2px; font-size: 18px;"></span>
+							<?php esc_html_e( 'Copy Agent Prompt', 'remotewp' ); ?>
+						</button>
+						<button type="button" class="button button-secondary" id="rwp-btn-test-connection" style="font-size: 12px; padding: 6px 14px; height: auto; border-radius: 8px;">
+							<?php esc_html_e( 'Test Connection', 'remotewp' ); ?>
+						</button>
+						<input type="hidden" id="remotewp-token" value="<?php echo esc_attr( $token ); ?>">
+						<input type="hidden" id="rwp-skill-prompt-full" value="<?php echo esc_attr( $full_prompt ); ?>">
+					<?php endif; ?>
 				</div>
-				<p style="margin: 12px 0 0; color: #9ca9be; font-size: 12px;">
-					💡 <?php esc_html_e( 'Tip: Click "Copy Full Prompt" and paste it directly into Claude, Cursor, ChatGPT or Antigravity to connect in 1 click.', 'remotewp' ); ?>
+				<p style="margin: 12px 0 0; color: #9ca9be; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+					<span class="dashicons dashicons-info" style="font-size: 16px; width: 16px; height: 16px; color: #9ca9be;"></span>
+					<span><?php esc_html_e( 'Tip: Click "Copy Agent Prompt" and paste it directly into Claude, ChatGPT, Cursor, Codex, or Antigravity to connect in 1 click.', 'remotewp' ); ?></span>
 				</p>
 				<div id="rwp-test-result" class="rwp-test-result-hidden" style="margin-top: 12px; max-width: 320px;"></div>
 			</div>
@@ -355,9 +414,9 @@ class RemoteWP_Admin {
 				<div class="rwp-status-panel">
 					<div class="rwp-spanel-row">
 						<span class="rwp-spanel-label"><?php esc_html_e( 'Status:', 'remotewp' ); ?></span>
-						<span class="rwp-spanel-val connected">
+						<span class="rwp-spanel-val <?php echo $is_connected ? 'connected' : 'setup-required'; ?>">
 							<span class="rwp-pulse-dot"></span>
-							<?php esc_html_e( 'Connected', 'remotewp' ); ?>
+							<?php echo $is_connected ? esc_html__( 'Connected', 'remotewp' ) : esc_html__( 'Setup required', 'remotewp' ); ?>
 						</span>
 					</div>
 					<div class="rwp-spanel-row">
@@ -380,7 +439,8 @@ class RemoteWP_Admin {
 		<div class="remotewp-card rwp-quickstart-card" style="margin-top: 18px; border: 1px solid rgba(37,99,235,0.25); background: #0f172a;">
 			<div class="remotewp-card-header">
 				<h2 style="display: flex; align-items: center; gap: 8px;">
-					🎯 <?php esc_html_e( 'Quick Start', 'remotewp' ); ?>
+					<span class="dashicons dashicons-controls-play" style="color: #2563eb; margin-top: 2px;"></span>
+					<?php esc_html_e( 'Quick Start', 'remotewp' ); ?>
 				</h2>
 				<p class="rwp-card-header-subtitle"><?php esc_html_e( 'Three steps to connect your AI agent and start working safely.', 'remotewp' ); ?></p>
 			</div>
@@ -389,34 +449,51 @@ class RemoteWP_Admin {
 					<div class="rwp-step-item">
 						<div class="rwp-step-num-wrap"><span class="rwp-step-number">1</span></div>
 						<div class="rwp-step-content">
-							<h4 class="rwp-step-title">🔑 <?php esc_html_e( 'Activate your license', 'remotewp' ); ?></h4>
+							<h4 class="rwp-step-title"><span class="dashicons dashicons-admin-network" style="margin-top: 2px; font-size: 16px; width: 16px; height: 16px;"></span> <?php esc_html_e( 'Activate your license', 'remotewp' ); ?></h4>
 							<p class="rwp-step-desc"><a href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=license' ) ); ?>"><?php esc_html_e( 'Open the License tab', 'remotewp' ); ?></a> <?php esc_html_e( 'and activate your Free or Pro key.', 'remotewp' ); ?></p>
 						</div>
 					</div>
 					<div class="rwp-step-item">
 						<div class="rwp-step-num-wrap"><span class="rwp-step-number">2</span></div>
 						<div class="rwp-step-content">
-							<h4 class="rwp-step-title">⚡ <?php esc_html_e( 'Copy the connection prompt', 'remotewp' ); ?></h4>
+							<h4 class="rwp-step-title"><span class="dashicons dashicons-admin-links" style="margin-top: 2px; font-size: 16px; width: 16px; height: 16px;"></span> <?php esc_html_e( 'Copy the connection prompt', 'remotewp' ); ?></h4>
 							<p class="rwp-step-desc"><?php esc_html_e( 'Use the blue button above, then paste the prompt into your AI agent.', 'remotewp' ); ?></p>
 						</div>
 					</div>
 					<div class="rwp-step-item">
 						<div class="rwp-step-num-wrap"><span class="rwp-step-number">3</span></div>
 						<div class="rwp-step-content">
-							<h4 class="rwp-step-title">🤖 <?php esc_html_e( 'Start your first task', 'remotewp' ); ?></h4>
-							<p class="rwp-step-desc"><?php esc_html_e( 'Ask the agent to inspect the site before making changes.', 'remotewp' ); ?></p>
+							<h4 class="rwp-step-title"><span class="dashicons dashicons-format-chat" style="margin-top: 2px; font-size: 16px; width: 16px; height: 16px;"></span> <?php esc_html_e( 'Start your first task', 'remotewp' ); ?></h4>
+							<p class="rwp-step-desc"><?php esc_html_e( 'Ask the agent to inspect the site safely before making changes:', 'remotewp' ); ?></p>
+							<div style="margin-top: 8px; background: #060c18; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+								<code id="rwp-first-cmd-step" style="color: #38bdf8; font-size: 12px; font-family: monospace; word-break: break-word;"><?php echo esc_html( $first_command ); ?></code>
+								<button type="button" class="button button-secondary remotewp-btn-copy" data-target="rwp-first-cmd-step" style="font-size: 11px; padding: 2px 8px; height: auto; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">
+									<span class="dashicons dashicons-clipboard" style="font-size: 14px; width: 14px; height: 14px; margin-top: 1px;"></span>
+									<?php esc_html_e( 'Copy', 'remotewp' ); ?>
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
 				<div class="rwp-howto-video">
-					<div class="rwp-howto-video-heading">▶ <?php esc_html_e( 'How to connect RemoteWP', 'remotewp' ); ?></div>
+					<div class="rwp-howto-video-heading"><span class="dashicons dashicons-video-alt3" style="font-size: 16px; width: 16px; height: 16px; margin-top: 2px;"></span> <?php esc_html_e( 'How to connect RemoteWP', 'remotewp' ); ?></div>
 					<div class="rwp-howto-video-frame">
 						<iframe src="https://www.youtube-nocookie.com/embed/98sJw7tmmWQ" title="How to connect RemoteWP" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 					</div>
 				</div>
 				<div class="rwp-quickstart-actions">
-					<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full">⚡ <?php esc_html_e( 'Copy Full Prompt', 'remotewp' ); ?></button>
-					<a class="rwp-howto-link" href="https://youtu.be/98sJw7tmmWQ?si=sWLaPwHxR0H7f1Z8" target="_blank" rel="noopener noreferrer">▶ <?php esc_html_e( 'How to: Watch the setup video', 'remotewp' ); ?> <span>(youtu.be/98sJw7tmmWQ)</span></a>
+					<?php if ( $is_connected ) : ?>
+						<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full" style="display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-admin-links" style="margin-top: 2px;"></span>
+							<?php esc_html_e( 'Copy Agent Prompt', 'remotewp' ); ?>
+						</button>
+					<?php else : ?>
+						<a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=license' ) ); ?>" style="display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-admin-network" style="margin-top: 2px;"></span>
+							<?php esc_html_e( 'Activate License', 'remotewp' ); ?>
+						</a>
+					<?php endif; ?>
+					<a class="rwp-howto-link" href="https://youtu.be/98sJw7tmmWQ?si=sWLaPwHxR0H7f1Z8" target="_blank" rel="noopener noreferrer"><span class="dashicons dashicons-video-alt3" style="font-size: 15px; margin-top: 2px;"></span> <?php esc_html_e( 'How to: Watch the setup video', 'remotewp' ); ?> <span>(youtu.be/98sJw7tmmWQ)</span></a>
 					<a class="button button-secondary" href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=docs' ) ); ?>"><?php esc_html_e( 'Documentation & capabilities', 'remotewp' ); ?></a>
 				</div>
 			</div>
@@ -448,10 +525,14 @@ class RemoteWP_Admin {
 			<div class="rwp-status-card">
 				<div class="rwp-scard-top">
 					<span class="rwp-scard-title"><?php esc_html_e( 'CONNECTION', 'remotewp' ); ?></span>
-					<span class="rwp-status-indicator active"></span>
+					<span class="rwp-status-indicator <?php echo $is_connected ? 'active' : 'setup-required'; ?>"></span>
 				</div>
-				<div class="rwp-scard-value connected"><?php esc_html_e( 'Connected', 'remotewp' ); ?></div>
-				<div class="rwp-scard-desc"><?php esc_html_e( 'API bridge is active', 'remotewp' ); ?></div>
+				<div class="rwp-scard-value <?php echo $is_connected ? 'connected' : 'setup-required'; ?>">
+					<?php echo $is_connected ? esc_html__( 'Connected', 'remotewp' ) : esc_html__( 'Setup required', 'remotewp' ); ?>
+				</div>
+				<div class="rwp-scard-desc">
+					<?php echo $is_connected ? esc_html__( 'API bridge is active', 'remotewp' ) : esc_html__( 'Activation needed', 'remotewp' ); ?>
+				</div>
 				<span class="dashicons dashicons-admin-links rwp-scard-bg-icon"></span>
 			</div>
 
@@ -491,7 +572,8 @@ class RemoteWP_Admin {
 			<div class="remotewp-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
 				<div>
 					<h2 style="display: flex; align-items: center; gap: 8px;">
-						🚀 <?php esc_html_e( 'AI Agent Skill Pack', 'remotewp' ); ?>
+						<span class="dashicons dashicons-superhero" style="color: #ff7a1a; margin-top: 2px;"></span>
+						<?php esc_html_e( 'AI Agent Skill Pack', 'remotewp' ); ?>
 					</h2>
 					<p class="rwp-card-header-subtitle"><?php esc_html_e( 'Connect your AI coding agent with a single prompt.', 'remotewp' ); ?></p>
 				</div>
@@ -501,17 +583,28 @@ class RemoteWP_Admin {
 			</div>
 			<div class="remotewp-card-body">
 				<p style="color: #9ca9be; font-size: 14px; margin: 0 0 20px; line-height: 1.6;">
-					<?php esc_html_e( 'Paste the prompt below into your AI agent (Claude, Cursor, ChatGPT, Copilot, etc.) to give it full RemoteWP capabilities.', 'remotewp' ); ?>
+					<?php esc_html_e( 'Paste the prompt below into your AI agent (Claude, ChatGPT, Cursor, Codex, Antigravity) to initialize RemoteWP management.', 'remotewp' ); ?>
 				</p>
 
 				<div class="rwp-skill-prompt-box" style="background: #0d1320; border: 1px solid rgba(255,122,26,0.25); border-radius: 12px; padding: 24px; margin-bottom: 20px; position: relative; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
-					<p style="margin: 0 0 6px; color: #5a657a; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;"><?php esc_html_e( 'Agent Prompt', 'remotewp' ); ?></p>
-					<p style="margin: 0 0 16px; color: #c4cfdf; font-size: 13px; line-height: 1.7; font-family: 'Courier New', monospace; word-break: break-all;">
-						<strong>Connect to RemoteWP:</strong> Call <span style="color: #ff7a1a;"><?php echo esc_html( $connect_url ); ?></span> with header X-RemoteWP-Token: <span style="color: #22c58f;"><?php echo esc_html( $masked_token ); ?></span> and follow instructions in response.
-					</p>
-					<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full" style="font-size: 14px; padding: 6px 18px; height: auto;">
-						⚡ <?php esc_html_e( 'Copy Full Prompt', 'remotewp' ); ?>
-					</button>
+					<p style="margin: 0 0 6px; color: #5a657a; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;"><?php esc_html_e( 'Agent Prompt (Claude, ChatGPT, Cursor, Codex, Antigravity)', 'remotewp' ); ?></p>
+					<?php if ( $is_connected ) : ?>
+						<p style="margin: 0 0 16px; color: #c4cfdf; font-size: 13px; line-height: 1.7; font-family: 'Courier New', monospace; word-break: break-all;">
+							<strong>Connect to RemoteWP:</strong> Run via terminal / command tool: <code style="color: #22c58f;">curl -s -X GET "<?php echo esc_html( $connect_url ); ?>" -H "X-RemoteWP-Token: <?php echo esc_html( $masked_token ); ?>"</code> — parse the JSON response and show the action menu.
+						</p>
+						<button type="button" class="button button-primary remotewp-btn-copy" data-target="rwp-skill-prompt-full" style="font-size: 14px; padding: 6px 18px; height: auto; display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-admin-links" style="margin-top: 2px;"></span>
+							<?php esc_html_e( 'Copy Agent Prompt', 'remotewp' ); ?>
+						</button>
+					<?php else : ?>
+						<p style="margin: 0 0 16px; color: #c4cfdf; font-size: 13px; line-height: 1.7;">
+							<strong><?php esc_html_e( 'Setup required:', 'remotewp' ); ?></strong> <?php esc_html_e( 'Activate your license and configure an API token to generate your live agent prompt.', 'remotewp' ); ?>
+						</p>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=remotewp&tab=license' ) ); ?>" class="button button-primary" style="font-size: 14px; padding: 6px 18px; height: auto; display: inline-flex; align-items: center; gap: 6px;">
+							<span class="dashicons dashicons-admin-network" style="margin-top: 2px;"></span>
+							<?php esc_html_e( 'Activate License', 'remotewp' ); ?>
+						</a>
+					<?php endif; ?>
 				</div>
 
 				<div class="rwp-skill-actions" style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -763,11 +856,11 @@ class RemoteWP_Admin {
 					<?php endif; ?>
 				">
 					<?php if ( 'expired' === $expiry_info['status'] ) : ?>
-						<span style="font-size: 16px;">🔴</span>
+						<span class="dashicons dashicons-dismiss" style="color: #ef4444; font-size: 18px; width: 18px; height: 18px;"></span>
 						<strong><?php esc_html_e( 'Token Expired', 'remotewp' ); ?></strong> —
 						<?php esc_html_e( 'Click "Regenerate Token" to create a new one.', 'remotewp' ); ?>
 					<?php elseif ( 'warning' === $expiry_info['status'] ) : ?>
-						<span style="font-size: 16px;">⚠️</span>
+						<span class="dashicons dashicons-warning" style="color: #f59e0b; font-size: 18px; width: 18px; height: 18px;"></span>
 						<strong><?php esc_html_e( 'Token Expiring Soon', 'remotewp' ); ?></strong> —
 						<?php
 						$hours = floor( $expiry_info['remaining'] / 3600 );
@@ -779,7 +872,7 @@ class RemoteWP_Admin {
 						);
 						?>
 					<?php elseif ( 'active' === $expiry_info['status'] ) : ?>
-						<span style="font-size: 16px;">🟢</span>
+						<span class="dashicons dashicons-yes-alt" style="color: #10b981; font-size: 18px; width: 18px; height: 18px;"></span>
 						<strong><?php esc_html_e( 'Token Active', 'remotewp' ); ?></strong> —
 						<?php
 						$hours = floor( $expiry_info['remaining'] / 3600 );
@@ -791,7 +884,7 @@ class RemoteWP_Admin {
 						);
 						?>
 					<?php else : ?>
-						<span style="font-size: 16px;">♾️</span>
+						<span class="dashicons dashicons-admin-generic" style="color: #94a3b8; font-size: 18px; width: 18px; height: 18px;"></span>
 						<strong><?php esc_html_e( 'Token: Never Expires', 'remotewp' ); ?></strong> —
 						<?php esc_html_e( 'Enable token rotation in Settings → Security for better security.', 'remotewp' ); ?>
 					<?php endif; ?>
@@ -1515,7 +1608,7 @@ class RemoteWP_Admin {
 			wp_redirect( admin_url( 'admin.php?page=remotewp&tab=license&license_error=' . urlencode( $result->get_error_message() ) ) );
 		} else {
 			$this->logger->log( 'LICENSE_ACTIVATED', '', 'Tier: ' . ( $result['tier'] ?? 'unknown' ) );
-			wp_redirect( admin_url( 'admin.php?page=remotewp&tab=license&license_activated=true' ) );
+			wp_redirect( admin_url( 'admin.php?page=remotewp&tab=dashboard&activated=1' ) );
 		}
 		exit;
 	}
@@ -1541,7 +1634,57 @@ class RemoteWP_Admin {
 	 * Render the License tab.
 	 */
 	private function render_license_tab() {
-		$info = $this->license->get_info();
+		$info        = $this->license->get_info();
+		$is_full     = defined( 'REMOTEWP_IS_FULL' ) && REMOTEWP_IS_FULL;
+		$has_license = $is_full || ( 'active' === ( $info['status'] ?? '' ) && ! empty( $info['key'] ) );
+
+		if ( ! $has_license ) {
+			?>
+			<div class="remotewp-welcome-card" style="max-width: 560px; margin: 30px auto; background: var(--rwp-card, #ffffff); border: 1px solid var(--rwp-border, #e2e8f0); border-radius: 16px; padding: 40px 36px; box-shadow: 0 10px 30px rgba(15,23,42,0.06); text-align: center;">
+				<div style="width: 56px; height: 56px; margin: 0 auto 20px; background: #eff6ff; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+					<span class="dashicons dashicons-admin-network" style="font-size: 28px; width: 28px; height: 28px; color: #2563eb;"></span>
+				</div>
+				<h2 style="font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 10px;">
+					<?php esc_html_e( 'Activate RemoteWP', 'remotewp' ); ?>
+				</h2>
+				<p style="color: #64748b; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+					<?php esc_html_e( 'Enter your license key to connect this WordPress site to AI agents.', 'remotewp' ); ?>
+				</p>
+
+				<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" style="text-align: left;">
+					<input type="hidden" name="action" value="remotewp_activate_license">
+					<?php wp_nonce_field( 'remotewp_activate_license' ); ?>
+
+					<div class="remotewp-field" style="margin-bottom: 14px;">
+						<label for="license_key" style="display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px;">
+							<?php esc_html_e( 'License Key', 'remotewp' ); ?>
+						</label>
+						<input type="text" name="license_key" id="license_key" value=""
+						       placeholder="RWPRO-XXXX-XXXX-XXXX-XXXX" class="large-text remotewp-input-mono"
+						       autofocus required
+						       style="width: 100%; font-size: 15px; padding: 12px 14px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box;">
+					</div>
+
+					<p style="font-size: 13px; color: #64748b; margin: 0 0 22px; display: flex; align-items: center; gap: 6px;">
+						<span class="dashicons dashicons-email-alt" style="font-size: 16px; width: 16px; height: 16px; color: #64748b;"></span>
+						<span><?php esc_html_e( 'Your license key was sent to your email upon registration.', 'remotewp' ); ?></span>
+					</p>
+
+					<button type="submit" class="button button-primary" style="width: 100%; justify-content: center; height: 46px; font-size: 15px; font-weight: 600; border-radius: 8px; background: #2563eb; border-color: #1d4ed8;">
+						<?php esc_html_e( 'Activate License', 'remotewp' ); ?>
+					</button>
+				</form>
+
+				<div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #f1f5f9; font-size: 13px; color: #64748b;">
+					<?php esc_html_e( "Don't have a license key yet?", 'remotewp' ); ?>
+					<a href="https://remotewp.dev" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 600; text-decoration: underline; margin-left: 4px;">
+						<?php esc_html_e( 'Get your key at remotewp.dev →', 'remotewp' ); ?>
+					</a>
+				</div>
+			</div>
+			<?php
+			return;
+		}
 		?>
 		<div class="remotewp-grid">
 			<!-- License Status Card -->
@@ -1741,8 +1884,8 @@ class RemoteWP_Admin {
 			echo '<div class="remotewp-notice remotewp-notice-warning"><p>' . esc_html__( 'API token regenerated. Update the token in all connected agents.', 'remotewp' ) . '</p></div>';
 		}
 
-		if ( isset( $_GET['license_activated'] ) ) {
-			echo '<div class="remotewp-notice remotewp-notice-success"><p>' . esc_html__( 'License activated successfully! All Pro features are now unlocked.', 'remotewp' ) . '</p></div>';
+		if ( isset( $_GET['license_activated'] ) || ( isset( $_GET['activated'] ) && '1' === (string) $_GET['activated'] ) ) {
+			echo '<div class="remotewp-notice remotewp-notice-success"><p>' . esc_html__( 'License activated successfully! All features are now unlocked.', 'remotewp' ) . '</p></div>';
 		}
 
 		if ( isset( $_GET['license_deactivated'] ) ) {
@@ -1829,8 +1972,9 @@ class RemoteWP_Admin {
 							<?php esc_html_e( 'RemoteWP exposes an automated AI Agent Skill specification compliant with the WordPress Agent Skills standard at /wp-json/remotewp/v2/skill. When an AI agent connects (Claude, Cursor, ChatGPT, Copilot, etc.), it reads this endpoint to discover all API methods, file operations, WooCommerce actions, and security rules.', 'remotewp' ); ?>
 						</p>
 						<div class="rwp-quickstart-actions" style="margin-top: 16px; padding-top: 0; border-top: none; display: flex; gap: 10px; flex-wrap: wrap;">
-							<a href="<?php echo esc_url( $skill_url ); ?>" target="_blank" class="button button-primary">
-								⚡ <?php esc_html_e( 'Preview Skill Endpoint', 'remotewp' ); ?>
+							<a href="<?php echo esc_url( $skill_url ); ?>" target="_blank" class="button button-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+								<span class="dashicons dashicons-visibility" style="margin-top: 2px;"></span>
+								<?php esc_html_e( 'Preview Skill Endpoint', 'remotewp' ); ?>
 							</a>
 							<a href="<?php echo esc_url( $skill_url ); ?>" target="_blank" rel="noopener" class="button button-secondary">
 								<?php esc_html_e( 'Open central SKILL.md', 'remotewp' ); ?>

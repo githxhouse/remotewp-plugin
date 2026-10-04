@@ -4,7 +4,7 @@ Tags: ai, api, remote management, wordpress development, developer tools, debugg
 Requires at least: 5.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.8.2
+Stable tag: 3.8.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -89,6 +89,18 @@ Yes. RemoteWP uses the standard WordPress REST API namespace (`/wp-json/helper/v
 3. Settings - Connection diagnostics, rate limiting and IP whitelist; license and capability policy are managed centrally by RemoteWP
 
 == Changelog ==
+
+= 3.8.4 =
+
+* UI/UX: Removed "Copy Token Only" button from Overview to prevent accidental connection failure with raw tokens.
+* UX: Kept single unambiguous "Copy Agent Prompt" action for seamless agent onboarding.
+
+= 3.8.3 =
+
+* UI/UX: Streamlined activation and onboarding flow for newly connected sites.
+* Fix: Accurate connection indicator and conditional prompt copying on active token.
+* UI/UX: Replaced decorative emojis with native WordPress Dashicons.
+* Improvement: Safe default inspection command in English upon successful license activation.
 
 = 3.8.0 =
 
